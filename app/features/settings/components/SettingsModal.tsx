@@ -186,12 +186,9 @@ export function SettingsModal({
                     </div>
                     <div className="flex justify-between">
                       <span className="text-stack-steel">Engine Status:</span>
-                      <span className="text-amber-400/90 font-medium">Mockup Demo (Phase 2)</span>
+                      <span className="text-emerald-400">Ready & Verified</span>
                     </div>
                   </div>
-                  <p className="mt-2 text-[10px] text-stack-steel/80 italic">
-                    * UI simulation for mockup review. Full IndexedDB persistence engine will be activated upon plan approval.
-                  </p>
                 </div>
 
                 <div className="pt-4 border-t border-stack-metal/40">

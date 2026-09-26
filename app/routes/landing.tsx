@@ -33,9 +33,9 @@ export default function LandingPage() {
             </div>
 
             <h1 className="font-mono text-4xl sm:text-6xl font-extrabold tracking-tight text-stack-bone leading-tight">
-              DESIGNED LOCAL-FIRST. <br />
+              MARKDOWN-FIRST. <br />
               <span className="text-stack-steel">
-                WRITING SHOULD NEVER WAIT FOR THE NETWORK.
+                ZERO LATENCY ON THE WIRE.
               </span>
             </h1>
 
@@ -63,19 +63,19 @@ export default function LandingPage() {
             <div className="flex flex-wrap items-center justify-center gap-6 pt-8 font-mono text-xs text-stack-steel">
               <div className="flex items-center gap-2">
                 <Zap className="h-4 w-4 text-stack-red-hover" />
-                <span>Designed Local-First</span>
+                <span>Zero Typing Latency</span>
               </div>
               <div className="flex items-center gap-2">
                 <Database className="h-4 w-4 text-stack-silver" />
-                <span>Zero Cloud Lock-in</span>
+                <span>IndexedDB Local-First</span>
               </div>
               <div className="flex items-center gap-2">
                 <Laptop className="h-4 w-4 text-stack-silver" />
-                <span>Desktop PWA Ready</span>
+                <span>Desktop PWA Native</span>
               </div>
               <div className="flex items-center gap-2">
                 <Lock className="h-4 w-4 text-stack-silver" />
-                <span>Pure Markdown Engine</span>
+                <span>Zero Vendor Lock-in</span>
               </div>
             </div>
           </div>
