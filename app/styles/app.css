@@ -1,0 +1,74 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-stack-bg: #090a0b;
+  --color-stack-surface: #111315;
+  --color-stack-surface-raised: #191c20;
+  --color-stack-metal: #32373d;
+  --color-stack-steel: #727981;
+  --color-stack-silver: #c4c7ca;
+  --color-stack-bone: #e7e5e1;
+  --color-stack-red-slate: #7a3237;
+  --color-stack-red-hover: #914047;
+  --color-stack-red-muted: #51282c;
+  --font-mono:
+    ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, Monaco, Consolas,
+    monospace;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-stack-bg);
+    color: var(--color-stack-bone);
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background-color: var(--color-stack-red-muted);
+    color: var(--color-stack-bone);
+  }
+}
+
+/* Subtle worn industrial metallic bevel & borders */
+.metal-border {
+  border: 1px solid var(--color-stack-metal);
+}
+
+.metal-border-subtle {
+  border: 1px solid rgba(50, 55, 61, 0.45);
+}
+
+.metal-border-t {
+  border-top: 1px solid var(--color-stack-metal);
+}
+
+.metal-border-b {
+  border-bottom: 1px solid var(--color-stack-metal);
+}
+
+.metal-panel {
+  background-color: var(--color-stack-surface);
+  border: 1px solid var(--color-stack-metal);
+}
+
+.metal-plate {
+  background-color: var(--color-stack-surface-raised);
+  border: 1px solid rgba(114, 121, 129, 0.2);
+}
+
+/* Custom scrollbars for technical feel */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-stack-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-stack-metal);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-stack-steel);
+}
