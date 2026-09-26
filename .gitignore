@@ -1,35 +1,23 @@
-# Source assets (must NOT be committed)
+# Raw project assets
 /assets/*
-assets/*
+
+# Environment
+.env
+.env.*
+!.env.example
 
 # Dependencies
 node_modules/
 .pnpm-store/
 
-# Production build outputs
-dist/
+# Builds
 build/
+dist/
 .react-router/
 
-# Environment files and secrets
-.env
-.env.local
-.env.*.local
-*.pem
-*.key
+# Vercel local metadata
+.vercel/
 
-# Logs & temp
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
+# Misc
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-.idea/
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
+*.log

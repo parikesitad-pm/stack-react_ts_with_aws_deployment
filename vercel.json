@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/app",
+      "destination": "/__spa-fallback.html"
+    },
+    {
+      "source": "/app/:path*",
+      "destination": "/__spa-fallback.html"
+    }
+  ]
+}

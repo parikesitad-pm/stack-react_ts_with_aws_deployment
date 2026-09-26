@@ -273,10 +273,25 @@ export function SettingsModal({
                   support.
                 </p>
                 <div className="rounded border border-stack-metal/60 bg-stack-bg p-3 text-[11px] space-y-1">
-                  <div>License: MIT License, 2026 - crafted with &lt;3 by <a href="https://github.com/parikesitad-pm" target="_blank" rel="noopener noreferrer" className="text-stack-bone underline decoration-stack-red-slate hover:text-stack-silver">parikesitad-pm</a></div>
                   <div>
-                    Repository:{" "}
-                    <a href="https://github.com/parikesitad-pm/stack-react_ts_with_aws_deployment" target="_blank" rel="noopener noreferrer" className="text-stack-silver underline hover:text-stack-bone">
+                    License: MIT License, 2026 - crafted with &lt;3 by{' '}
+                    <a
+                      href="https://github.com/parikesitad-pm"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-stack-bone underline decoration-stack-red-slate hover:text-stack-silver"
+                    >
+                      parikesitad-pm
+                    </a>
+                  </div>
+                  <div>
+                    Repository:{' '}
+                    <a
+                      href="https://github.com/parikesitad-pm/stack-react_ts_with_aws_deployment"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-stack-silver underline hover:text-stack-bone"
+                    >
                       github.com/parikesitad-pm/stack-react_ts_with_aws_deployment
                     </a>
                   </div>

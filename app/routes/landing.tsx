@@ -11,7 +11,6 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { PublicNavbar } from '~/components/molecules/PublicNavbar';
-import { PublicFooter } from '~/components/molecules/PublicFooter';
 import { Button } from '~/components/atoms/Button';
 import { Badge } from '~/components/atoms/Badge';
 
@@ -222,7 +221,29 @@ export default function LandingPage() {
       </main>
 
       {/* Footer */}
-      <PublicFooter />
+      <footer className="border-t border-stack-metal/80 bg-stack-bg px-4 py-8 font-mono text-xs text-stack-steel sm:px-6">
+        <div className="mx-auto flex max-w-6xl flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-stack-bone">STACK</span>
+            <span>· A Modula Project</span>
+            <span>· MIT License 2026 parikesitad-pm</span>
+          </div>
+          <div className="flex items-center gap-6 text-stack-silver">
+            <Link to="/docs" className="hover:text-stack-bone">
+              Docs
+            </Link>
+            <Link to="/help" className="hover:text-stack-bone">
+              Help
+            </Link>
+            <Link to="/changelog" className="hover:text-stack-bone">
+              Changelog
+            </Link>
+            <Link to="/app" className="text-stack-red-hover hover:underline">
+              Launch App
+            </Link>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
