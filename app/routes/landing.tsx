@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import {
   ArrowRight,
@@ -11,10 +12,40 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { PublicNavbar } from '~/components/molecules/PublicNavbar';
+import { PublicFooter } from '~/components/molecules/PublicFooter';
 import { Button } from '~/components/atoms/Button';
 import { Badge } from '~/components/atoms/Badge';
+import {
+  DEFAULT_LANDING_CONTENT,
+  type LandingContent,
+} from '~/features/landing/config/landing.types';
 
 export default function LandingPage() {
+  const [content, setContent] =
+    useState<LandingContent>(DEFAULT_LANDING_CONTENT);
+
+  useEffect(() => {
+    const raw = localStorage.getItem('stack_custom_landing');
+    if (raw) {
+      try {
+        setContent((prev) => ({ ...prev, ...JSON.parse(raw) }));
+      } catch {
+        // ignore invalid json
+      }
+    }
+
+    const handleUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<LandingContent>;
+      if (customEvent.detail) {
+        setContent(customEvent.detail);
+      }
+    };
+
+    window.addEventListener('stack:update-landing', handleUpdate);
+    return () =>
+      window.removeEventListener('stack:update-landing', handleUpdate);
+  }, []);
+
   return (
     <div className="min-h-screen bg-stack-bg text-stack-bone flex flex-col selection:bg-stack-red-muted selection:text-stack-bone">
       <PublicNavbar />
@@ -28,21 +59,17 @@ export default function LandingPage() {
             <div className="inline-flex items-center gap-2 rounded-full border border-stack-metal bg-stack-surface px-3 py-1">
               <span className="h-2 w-2 rounded-full bg-stack-red-slate" />
               <span className="font-mono text-xs text-stack-silver">
-                STACK v0.1.0 · A Modula Project
+                {content.badge}
               </span>
             </div>
 
             <h1 className="font-mono text-4xl sm:text-6xl font-extrabold tracking-tight text-stack-bone leading-tight">
-              MARKDOWN-FIRST. <br />
-              <span className="text-stack-steel">
-                ZERO LATENCY ON THE WIRE.
-              </span>
+              {content.headline} <br />
+              <span className="text-stack-steel">{content.subheadline}</span>
             </h1>
 
             <p className="mx-auto max-w-2xl font-mono text-sm sm:text-base text-stack-silver leading-relaxed">
-              An industrial-grade, local-first note application engineered for
-              Windows and Linux desktop environments, installable as a
-              high-performance PWA. Plain UTF-8 Markdown is the canonical truth.
+              {content.description}
             </p>
 
             <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
@@ -220,30 +247,7 @@ export default function LandingPage() {
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-stack-metal/80 bg-stack-bg px-4 py-8 font-mono text-xs text-stack-steel sm:px-6">
-        <div className="mx-auto flex max-w-6xl flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-stack-bone">STACK</span>
-            <span>· A Modula Project</span>
-            <span>· MIT License 2026 parikesitad-pm</span>
-          </div>
-          <div className="flex items-center gap-6 text-stack-silver">
-            <Link to="/docs" className="hover:text-stack-bone">
-              Docs
-            </Link>
-            <Link to="/help" className="hover:text-stack-bone">
-              Help
-            </Link>
-            <Link to="/changelog" className="hover:text-stack-bone">
-              Changelog
-            </Link>
-            <Link to="/app" className="text-stack-red-hover hover:underline">
-              Launch App
-            </Link>
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

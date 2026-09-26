@@ -6,6 +6,8 @@ import {
   ScrollRestoration,
   isRouteErrorResponse,
 } from 'react-router';
+import { useEffect } from 'react';
+import { initConsoleHelper } from '~/lib/consoleApi';
 import './styles/app.css';
 
 export function meta() {
@@ -60,6 +62,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  useEffect(() => {
+    initConsoleHelper();
+  }, []);
+
   return <Outlet />;
 }
 

@@ -8,7 +8,9 @@
   "scripts": {
     "dev": "react-router dev",
     "build": "react-router build",
-    "typecheck": "react-router typegen && tsc --noEmit"
+    "typecheck": "react-router typegen && tsc --noEmit",
+    "how-to-use": "node scripts/how-to-use.js",
+    "update-landing": "node scripts/update-landing.js"
   },
   "devDependencies": {
     "@react-router/dev": "^8.4.0",
