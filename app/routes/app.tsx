@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { useAuthSession } from '~/features/auth/hooks/useAuthSession';
+import { IdentityService } from '~/features/profile/services/identity.service';
 import { StartupLoader } from '~/features/workspace/components/StartupLoader';
 import { EmailVerificationGate } from '~/features/auth/components/EmailVerificationGate';
 import { OnboardingModal } from '~/features/profile/components/OnboardingModal';
@@ -23,6 +24,8 @@ export default function AppPage() {
     token,
     hasCompletedOnboarding,
     checkEmailVerified,
+    resendVerificationEmail,
+    updateProfile,
     signOut,
   } = useAuthSession();
 
@@ -55,7 +58,14 @@ export default function AppPage() {
       <EmailVerificationGate
         email={user.email}
         onRefreshSession={checkEmailVerified}
-        onResendVerification={async () => {}}
+        isResendSupported={IdentityService.hasBackendApi()}
+        onResendVerification={
+          IdentityService.hasBackendApi()
+            ? async () => {
+                await resendVerificationEmail();
+              }
+            : undefined
+        }
         onSignOut={signOut}
       />
     );
@@ -66,11 +76,12 @@ export default function AppPage() {
     return (
       <OnboardingModal
         isOpen={true}
-        sub={user.sub}
         email={user.email}
         isSocial={user.isSocial}
         token={token || undefined}
-        onComplete={() => {}}
+        onComplete={(newProfile) => {
+          updateProfile(newProfile);
+        }}
       />
     );
   }

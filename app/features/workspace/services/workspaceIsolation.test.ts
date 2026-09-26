@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { userWorkspaceStorage, hashSub } from './userWorkspaceStorage';
+import { logoutCleanupService } from '~/features/auth/services/logoutCleanup.service';
 import type { Note, Folder } from '~/features/notes/types/note.types';
 
 describe('Strict Per-User Workspace Storage Isolation', () => {
@@ -130,5 +131,68 @@ describe('Strict Per-User Workspace Storage Isolation', () => {
 
     expect(attA).not.toBeNull();
     expect(attB).toBeNull();
+  });
+
+  it('passes the end-to-end acceptance test: A creates note -> logout -> B logs in (A note absent) -> B creates note -> logout -> A logs in (only A note appears)', async () => {
+    const subA = 'auth0|user_alpha';
+    const subB = 'google-oauth2|user_beta';
+
+    // 1. User A logs in and creates note
+    const noteA: Note = {
+      id: 'note_user_a',
+      title: 'Secret Plans for STACK',
+      content: 'Only for User A eyes',
+      tags: [],
+      folderId: null,
+      order: 0,
+      isPinned: false,
+      isArchived: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      syncStatus: 'saved_locally',
+    };
+    await userWorkspaceStorage.saveNotes(subA, [noteA]);
+
+    // Verify User A has their note
+    const notesA1 = await userWorkspaceStorage.getNotes(subA);
+    expect(notesA1).toHaveLength(1);
+    expect(notesA1[0]?.id).toBe('note_user_a');
+
+    // 2. User A logs out -> triggers cleanup protocol
+    await logoutCleanupService.execute({ sub: subA });
+
+    // 3. User B logs in -> opens their workspace
+    const notesB1 = await userWorkspaceStorage.getNotes(subB);
+    expect(notesB1).toHaveLength(0); // A's note MUST NOT APPEAR!
+
+    // 4. User B creates their own note
+    const noteB: Note = {
+      id: 'note_user_b',
+      title: 'Point Specifications',
+      content: 'Only for User B eyes',
+      tags: [],
+      folderId: null,
+      order: 0,
+      isPinned: false,
+      isArchived: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      syncStatus: 'saved_locally',
+    };
+    await userWorkspaceStorage.saveNotes(subB, [noteB]);
+
+    // Verify User B has their note and not User A's note
+    const notesB2 = await userWorkspaceStorage.getNotes(subB);
+    expect(notesB2).toHaveLength(1);
+    expect(notesB2[0]?.id).toBe('note_user_b');
+
+    // 5. User B logs out -> triggers cleanup protocol
+    await logoutCleanupService.execute({ sub: subB });
+
+    // 6. User A logs in again -> opens their workspace
+    const notesA2 = await userWorkspaceStorage.getNotes(subA);
+    expect(notesA2).toHaveLength(1); // ONLY A's note appears!
+    expect(notesA2[0]?.id).toBe('note_user_a');
+    expect(notesA2.find((n) => n.id === 'note_user_b')).toBeUndefined();
   });
 });

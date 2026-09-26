@@ -1,6 +1,7 @@
 import { useNavigate, useSearchParams } from 'react-router';
 import { EmailVerificationGate } from '~/features/auth/components/EmailVerificationGate';
 import { useAuthSession } from '~/features/auth/hooks/useAuthSession';
+import { IdentityService } from '~/features/profile/services/identity.service';
 
 export function meta() {
   return [
@@ -12,7 +13,8 @@ export function meta() {
 export default function VerifyPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, checkEmailVerified, signOut } = useAuthSession();
+  const { user, checkEmailVerified, resendVerificationEmail, signOut } =
+    useAuthSession();
   const email = user?.email || searchParams.get('email') || '';
 
   return (
@@ -25,7 +27,14 @@ export default function VerifyPage() {
         }
         return ok;
       }}
-      onResendVerification={async () => {}}
+      isResendSupported={IdentityService.hasBackendApi()}
+      onResendVerification={
+        IdentityService.hasBackendApi()
+          ? async () => {
+              await resendVerificationEmail();
+            }
+          : undefined
+      }
       onSignOut={() => {
         signOut();
         navigate('/auth/login', { replace: true });

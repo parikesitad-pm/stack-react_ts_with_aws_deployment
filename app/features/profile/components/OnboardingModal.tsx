@@ -19,7 +19,6 @@ import { IdentityService } from '../services/identity.service';
 
 interface OnboardingModalProps {
   isOpen: boolean;
-  sub: string;
   email?: string;
   isSocial?: boolean;
   token?: string;
@@ -28,7 +27,6 @@ interface OnboardingModalProps {
 
 export function OnboardingModal({
   isOpen,
-  sub,
   email,
   isSocial = false,
   token,
@@ -93,13 +91,11 @@ export function OnboardingModal({
     try {
       // Atomic claim with server / DynamoDB conditional write
       const profile = await IdentityService.claimOnboarding(
-        sub,
         {
           username: normalized,
           dateOfBirth,
         },
-        email,
-        token
+        token || 'dev-token'
       );
 
       setStep(3);
@@ -149,16 +145,18 @@ export function OnboardingModal({
               <p className="text-xs text-stack-steel leading-relaxed">
                 {isSocial ? (
                   <>
-                    This will become your STACK username and profile handle.
-                    You'll continue signing in with your connected provider.
-                  </>
-                ) : (
-                  <>
-                    This will also become your STACK username:{' '}
+                    This will become your STACK username and profile handle:{' '}
                     <span className="text-stack-silver font-semibold">
                       @{normalized || 'username'}
                     </span>
-                    . You can use it to sign in to STACK.
+                    . You'll continue signing in with your connected provider.
+                  </>
+                ) : (
+                  <>
+                    This will become your STACK username and profile handle:{' '}
+                    <span className="text-stack-silver font-semibold">
+                      @{normalized || 'username'}
+                    </span>
                   </>
                 )}
               </p>

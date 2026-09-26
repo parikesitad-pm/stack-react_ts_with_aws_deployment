@@ -1,5 +1,6 @@
 import type { UserProfile } from '../schemas/username.schema';
 import { normalizeUsername, usernameSchema } from '../schemas/username.schema';
+import { DevMockIdentityAdapter } from './identityMock.service';
 
 export interface OnboardingPayload {
   username: string;
@@ -12,22 +13,11 @@ export interface UsernameAvailabilityResult {
   suggestions?: string[];
 }
 
-/**
- * Storage key for simulated DynamoDB partition tables when VITE_API_BASE_URL is not set.
- * In a fully deployed AWS environment, these operations execute inside an AWS Lambda behind
- * an HTTP API Gateway with JWT Authorizer verifying Auth0 tokens.
- */
-const DYNAMODB_SIMULATED_STORE_KEY = 'stack_identity_dynamo_items';
-
-interface DynamoItem {
-  PK: string; // e.g. "USER#auth0|xxx" or "USERNAME#luca"
-  SK: string; // e.g. "PROFILE" or "CLAIM"
-  data: Record<string, unknown>;
-  createdAt: string;
-}
-
 export class IdentityService {
-  private static getApiBaseUrl(): string {
+  /**
+   * Evaluates if the authoritative backend API is configured
+   */
+  static getApiBaseUrl(): string {
     return (
       (typeof import.meta !== 'undefined' &&
         import.meta.env?.VITE_API_BASE_URL) ||
@@ -35,24 +25,30 @@ export class IdentityService {
     );
   }
 
-  /**
-   * Generates alternative suggestions if a username is claimed
-   */
-  static suggestAlternatives(base: string): string[] {
-    const clean = normalizeUsername(base);
-    const year = new Date().getFullYear();
-    const candidates = [
-      `${clean}.${year.toString().slice(-2)}`,
-      `${clean}_pm`,
-      `${clean}-notes`,
-      `${clean}.stack`,
-      `${clean}01`,
-    ];
-    return candidates.filter((c) => usernameSchema.safeParse(c).success);
+  static hasBackendApi(): boolean {
+    return Boolean(this.getApiBaseUrl());
+  }
+
+  static isDevOrTest(): boolean {
+    if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') {
+      return true;
+    }
+    return Boolean(
+      typeof import.meta !== 'undefined' && import.meta.env?.DEV
+    );
   }
 
   /**
-   * Check username availability (advisory check)
+   * Advisory suggestions for taken usernames
+   */
+  static suggestAlternatives(base: string): string[] {
+    return DevMockIdentityAdapter.suggestAlternatives(base);
+  }
+
+  /**
+   * Advisory username availability check.
+   * Production: queries GET /usernames/:username/availability
+   * Dev/Test fallback: queries DevMockIdentityAdapter
    */
   static async checkAvailability(
     rawUsername: string,
@@ -83,32 +79,34 @@ export class IdentityService {
               : this.suggestAlternatives(normalized),
           };
         }
-      } catch {
-        // Fallback to local partition table
+      } catch (err) {
+        console.error('[IdentityService] Availability check failed:', err);
       }
     }
 
-    // Local DynamoDB simulated conditional check
-    const items = this.loadDynamoItems();
-    const claimPk = `USERNAME#${normalized}`;
-    const isTaken = items.some((item) => item.PK === claimPk);
+    if (this.isDevOrTest()) {
+      return DevMockIdentityAdapter.checkAvailability(normalized);
+    }
 
+    // In production without backend API, local cannot guarantee uniqueness
     return {
-      available: !isTaken,
+      available: false,
       normalizedUsername: normalized,
-      suggestions: isTaken ? this.suggestAlternatives(normalized) : undefined,
+      suggestions: this.suggestAlternatives(normalized),
     };
   }
 
   /**
-   * Retrieve current user profile by Auth0 sub
+   * Retrieves profile of current authenticated user.
+   *
+   * Invariant: Frontend does NOT pass sub as the authority.
+   * The backend Lambda extracts event.requestContext.authorizer.jwt.claims.sub from the JWT.
    */
-  static async getProfile(
-    sub: string,
-    token?: string
-  ): Promise<UserProfile | null> {
+  static async getProfile(token: string): Promise<UserProfile | null> {
+    if (!token) return null;
+
     const apiBase = this.getApiBaseUrl();
-    if (apiBase && token) {
+    if (apiBase) {
       try {
         const res = await fetch(`${apiBase}/me`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -117,35 +115,39 @@ export class IdentityService {
           return (await res.json()) as UserProfile;
         }
         if (res.status === 404) return null;
-      } catch {
-        // Fallback
+      } catch (err) {
+        console.error('[IdentityService] Failed to fetch /me:', err);
       }
     }
 
-    const items = this.loadDynamoItems();
-    const userPk = `USER#${sub}`;
-    const userItem = items.find(
-      (item) => item.PK === userPk && item.SK === 'PROFILE'
-    );
-    if (userItem) {
-      return userItem.data as unknown as UserProfile;
+    // Controlled development / test fallback
+    if (this.isDevOrTest()) {
+      const mockSub = this.extractSubFromTokenOrFallback(token);
+      return DevMockIdentityAdapter.getProfile(mockSub);
     }
+
     return null;
   }
 
   /**
-   * Atomically claims username and completes onboarding.
+   * Atomically claims STACK username and marks onboarding complete.
    *
-   * AWS DynamoDB Semantic Invariant:
-   * Uses conditional write: `attribute_not_exists(PK)` on `USERNAME#{normalizedUsername}`.
-   * If collision occurs, raises USERNAME_TAKEN atomically.
+   * Invariant:
+   * 1. No local store may claim authoritative global uniqueness in production.
+   * 2. sub is NOT in the payload; the backend authorizer verifies owner identity from the JWT.
+   *
+   * API Contract:
+   * POST /me/onboarding
+   * Body: { "username": string, "dateOfBirth"?: string }
    */
   static async claimOnboarding(
-    sub: string,
     payload: OnboardingPayload,
-    email?: string,
-    token?: string
+    token: string
   ): Promise<UserProfile> {
+    if (!token) {
+      throw new Error('AUTH_TOKEN_REQUIRED');
+    }
+
     const normalized = normalizeUsername(payload.username);
     const parsed = usernameSchema.safeParse(normalized);
     if (!parsed.success) {
@@ -153,7 +155,7 @@ export class IdentityService {
     }
 
     const apiBase = this.getApiBaseUrl();
-    if (apiBase && token) {
+    if (apiBase) {
       const res = await fetch(`${apiBase}/me/onboarding`, {
         method: 'POST',
         headers: {
@@ -170,90 +172,79 @@ export class IdentityService {
         throw new Error('USERNAME_TAKEN');
       }
       if (!res.ok) {
-        throw new Error('Failed to complete onboarding on server');
+        throw new Error('Failed to complete onboarding on authoritative server');
       }
       return (await res.json()) as UserProfile;
     }
 
-    // Local DynamoDB simulated atomic conditional transaction
-    const items = this.loadDynamoItems();
-    const claimPk = `USERNAME#${normalized}`;
-    const existingClaim = items.find((i) => i.PK === claimPk);
-
-    // Conditional check: attribute_not_exists(PK)
-    if (existingClaim && existingClaim.data.ownerSub !== sub) {
-      throw new Error('USERNAME_TAKEN');
+    // Controlled Development / Test Mode
+    if (this.isDevOrTest()) {
+      const mockSub = this.extractSubFromTokenOrFallback(token);
+      console.warn(
+        '[STACK DEV MOCK] Claiming username locally for development. Not globally authoritative.'
+      );
+      return DevMockIdentityAdapter.claimOnboarding(mockSub, {
+        username: normalized,
+        dateOfBirth: payload.dateOfBirth,
+      });
     }
 
-    const now = new Date().toISOString();
-    const userProfile: UserProfile = {
-      sub,
-      username: normalized,
-      email,
-      dateOfBirth: payload.dateOfBirth,
-      onboardingCompletedAt: now,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    // Update items atomically
-    const filtered = items.filter(
-      (i) => i.PK !== `USER#${sub}` && i.PK !== claimPk
+    // In production without backend API, fail loud and never claim local authority
+    throw new Error(
+      'IDENTITY_BACKEND_UNAVAILABLE: Authoritative STACK identity API is not configured. Username cannot be claimed.'
     );
-    filtered.push({
-      PK: `USER#${sub}`,
-      SK: 'PROFILE',
-      data: userProfile as unknown as Record<string, unknown>,
-      createdAt: now,
-    });
-    filtered.push({
-      PK: claimPk,
-      SK: 'CLAIM',
-      data: { ownerSub: sub, username: normalized },
-      createdAt: now,
-    });
-
-    this.saveDynamoItems(filtered);
-    return userProfile;
-  }
-
-  private static memoryStore: DynamoItem[] = [];
-
-  private static loadDynamoItems(): DynamoItem[] {
-    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-      try {
-        const raw = localStorage.getItem(DYNAMODB_SIMULATED_STORE_KEY);
-        return raw ? JSON.parse(raw) : this.memoryStore;
-      } catch {
-        return this.memoryStore;
-      }
-    }
-    return this.memoryStore;
-  }
-
-  private static saveDynamoItems(items: DynamoItem[]): void {
-    this.memoryStore = [...items];
-    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-      try {
-        localStorage.setItem(
-          DYNAMODB_SIMULATED_STORE_KEY,
-          JSON.stringify(items)
-        );
-      } catch {
-        // quota or private mode fallback
-      }
-    }
   }
 
   /**
-   * Test fixture helper to reset memory items
+   * Request programmatic resend of Auth0 verification email via trusted backend.
+   *
+   * Invariant:
+   * Never call Auth0 Management API directly from the browser SPA.
+   * The backend Lambda derives caller identity from JWT and invokes the Auth0 verification job.
    */
-  static resetForTesting(): void {
-    this.memoryStore = [];
-    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-      try {
-        localStorage.removeItem(DYNAMODB_SIMULATED_STORE_KEY);
-      } catch {}
+  static async resendVerificationEmail(token: string): Promise<boolean> {
+    if (!token) {
+      throw new Error('AUTH_TOKEN_REQUIRED');
     }
+
+    const apiBase = this.getApiBaseUrl();
+    if (!apiBase) {
+      throw new Error('RESEND_BACKEND_UNAVAILABLE');
+    }
+
+    const res = await fetch(`${apiBase}/me/resend-verification`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      throw new Error('FAILED_TO_RESEND_VERIFICATION');
+    }
+
+    return true;
+  }
+
+  /**
+   * Helper for dev/test adapter to resolve identity key from mock token
+   */
+  private static extractSubFromTokenOrFallback(token: string): string {
+    if (token.startsWith('auth0|') || token.startsWith('google-oauth2|') || token.startsWith('github|')) {
+      return token;
+    }
+    // Attempt simple JWT payload decode if applicable
+    try {
+      const parts = token.split('.');
+      if (parts.length === 3 && typeof atob !== 'undefined') {
+        const payload = JSON.parse(atob(parts[1] || ''));
+        if (payload?.sub) return payload.sub;
+      }
+    } catch {}
+    return 'dev-mock-operator';
+  }
+
+  static resetForTesting(): void {
+    DevMockIdentityAdapter.resetForTesting();
   }
 }

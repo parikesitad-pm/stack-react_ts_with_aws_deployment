@@ -6,7 +6,8 @@ import { Button } from '~/components/atoms/Button';
 interface EmailVerificationGateProps {
   email: string;
   onRefreshSession: () => Promise<boolean>;
-  onResendVerification: () => Promise<void>;
+  onResendVerification?: () => Promise<void>;
+  isResendSupported?: boolean;
   onSignOut: () => void;
 }
 
@@ -14,6 +15,7 @@ export function EmailVerificationGate({
   email,
   onRefreshSession,
   onResendVerification,
+  isResendSupported = false,
   onSignOut,
 }: EmailVerificationGateProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -61,16 +63,18 @@ export function EmailVerificationGate({
   };
 
   const handleResend = async () => {
-    if (resendCooldown > 0 || isResending) return;
+    if (!onResendVerification || !isResendSupported || resendCooldown > 0 || isResending) return;
     setIsResending(true);
     setErrorMessage(null);
     setInfoMessage(null);
     try {
       await onResendVerification();
       setResendCooldown(60);
-      setInfoMessage(`Verification email resent to ${maskedEmail}.`);
+      setInfoMessage(`Verification email request dispatched to ${maskedEmail}.`);
     } catch {
-      setErrorMessage('Failed to request resend. Please check your inbox or retry in a minute.');
+      setErrorMessage(
+        'Failed to request verification resend. Please check your inbox or retry in a minute.'
+      );
     } finally {
       setIsResending(false);
     }
@@ -81,7 +85,7 @@ export function EmailVerificationGate({
       <div className="relative w-full max-w-md border border-stack-metal bg-stack-surface p-6 sm:p-8 rounded-lg shadow-2xl space-y-6">
         <div className="flex flex-col items-center text-center space-y-3">
           <BrandLogo size="md" showWordmark={true} />
-          
+
           <div className="w-12 h-12 rounded-full bg-stack-surface-raised border border-stack-metal flex items-center justify-center text-stack-bone mt-2">
             <Mail className="w-5 h-5 text-stack-red-hover" />
           </div>
@@ -133,25 +137,36 @@ export function EmailVerificationGate({
             )}
           </Button>
 
-          <Button
-            type="button"
-            variant="secondary"
-            size="md"
-            onClick={handleResend}
-            disabled={isResending || resendCooldown > 0}
-            className="w-full justify-center text-xs"
-          >
-            {isResending ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
-                <span>Resending…</span>
-              </>
-            ) : resendCooldown > 0 ? (
-              <span>Resend verification email ({resendCooldown}s)</span>
-            ) : (
-              <span>Resend verification email</span>
-            )}
-          </Button>
+          {isResendSupported && onResendVerification ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              onClick={handleResend}
+              disabled={isResending || resendCooldown > 0}
+              className="w-full justify-center text-xs"
+            >
+              {isResending ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
+                  <span>Resending…</span>
+                </>
+              ) : resendCooldown > 0 ? (
+                <span>Resend verification email ({resendCooldown}s)</span>
+              ) : (
+                <span>Resend verification email</span>
+              )}
+            </Button>
+          ) : (
+            <div className="p-3 rounded bg-stack-surface-raised border border-stack-metal/60 text-stack-steel text-xs space-y-1 text-center">
+              <p className="text-stack-silver font-medium">
+                Haven't received the link?
+              </p>
+              <p className="text-[11px] text-stack-steel leading-relaxed">
+                Please check your spam or junk folder. In-app resend requires active STACK Identity API.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="text-center pt-2 border-t border-stack-metal/40">

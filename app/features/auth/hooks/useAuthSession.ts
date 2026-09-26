@@ -42,24 +42,34 @@ export function useAuthSession() {
     if (isAuthenticated && auth0User?.sub) {
       attachmentRepository.setActiveSub(auth0User.sub);
 
-      getAccessTokenSilently()
-        .then((t) => {
-          if (isMounted) setToken(t || null);
-        })
-        .catch(() => {
-          // Token retrieval failed or no audience configured
-          if (isMounted) setToken(null);
-        });
-
       setIsProfileLoading(true);
-      IdentityService.getProfile(auth0User.sub)
-        .then((p) => {
-          if (isMounted) {
-            setProfile(p);
-            setIsProfileLoading(false);
+      getAccessTokenSilently()
+        .then(async (t) => {
+          if (!isMounted) return;
+          setToken(t || null);
+          const authToken = t || (IdentityService.isDevOrTest() ? auth0User.sub : '');
+          if (authToken) {
+            try {
+              const p = await IdentityService.getProfile(authToken);
+              if (isMounted) setProfile(p);
+            } catch {
+              // Ignore failure
+            }
           }
         })
-        .catch(() => {
+        .catch(async () => {
+          if (!isMounted) return;
+          setToken(null);
+          if (IdentityService.isDevOrTest() && auth0User?.sub) {
+            try {
+              const p = await IdentityService.getProfile(auth0User.sub);
+              if (isMounted) setProfile(p);
+            } catch {
+              // Ignore
+            }
+          }
+        })
+        .finally(() => {
           if (isMounted) setIsProfileLoading(false);
         });
     } else {
@@ -189,17 +199,27 @@ export function useAuthSession() {
       if (!auth0User?.sub) {
         throw new Error('AUTH_REQUIRED');
       }
+      const authToken =
+        token || (IdentityService.isDevOrTest() ? auth0User.sub : '');
+      if (!authToken) {
+        throw new Error('AUTH_TOKEN_REQUIRED');
+      }
       const newProfile = await IdentityService.claimOnboarding(
-        auth0User.sub,
         { username, dateOfBirth },
-        auth0User.email,
-        token || undefined
+        authToken
       );
       setProfile(newProfile);
       return newProfile;
     },
-    [auth0User?.sub, auth0User?.email, token]
+    [auth0User?.sub, token]
   );
+
+  const resendVerificationEmail = useCallback(async (): Promise<boolean> => {
+    if (!token) {
+      throw new Error('AUTH_TOKEN_REQUIRED');
+    }
+    return IdentityService.resendVerificationEmail(token);
+  }, [token]);
 
   const completeOnboarding = useCallback(
     (
@@ -262,6 +282,7 @@ export function useAuthSession() {
     checkEmailVerified,
     claimUsername,
     completeOnboarding,
+    resendVerificationEmail,
     updateProfile,
     signOut,
   };

@@ -9,13 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Public project registry route (`/modula-project`) exhibiting systems engineered under the Modula Project umbrella.
-- Industrial "Mission Roster" layout featuring square/beveled technical separators, subtle status lamps, and zero generic SaaS cards.
-- Stable status sorting prioritizing live production deployments while preserving source order for systems under reconstruction.
-- Real-time telemetry counters dynamically computed from the typed project constant (Total, Live, Under Reconstruction).
-- Prerendering of `/modula-project` into static HTML (`build/client/modula-project/index.html`) in React Router Framework Mode.
-- Integrated `Modula Projects` navigation link in header and `More from Modula` in public footer.
-- Updated `sitemap.xml` with canonical indexing metadata for `/modula-project`.
+- Public project registry route (`/modula-project`) exhibiting systems engineered under the Modula Project umbrella with industrial "Mission Roster" layout.
+- Real-time telemetry counters dynamically computed from typed project array (Total, Live, Under Reconstruction).
+- Backend-authoritative STACK identity contract (`GET /me`, `POST /me/onboarding`, `GET /usernames/:username/availability`) where backend extracts `claims.sub` from API Gateway authorizer.
+- Dedicated `DevMockIdentityAdapter` for local dev/test with explicit logging and zero simulated authority in production.
+- Verified end-to-end acceptance test: Account A creates notes -> logout -> Account B logs in (A's notes absent) -> Account B creates notes -> logout -> Account A logs in (only A's notes visible).
+
+### Changed
+
+- Refactored `IdentityService` signatures to completely remove client-sent `sub` authority from onboarding and profile retrieval.
+- Updated onboarding copy: `@username` is presented as STACK username and profile handle without claiming it can be used for Auth0 password sign-in.
+- Guarded email verification resend: prevented browser SPA from calling Auth0 Management API or faking client success; requires trusted backend endpoint.
 
 ## [0.4.0] - 2026-09-27
 
