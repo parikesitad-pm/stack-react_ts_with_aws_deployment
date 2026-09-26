@@ -79,8 +79,8 @@ export function NoteListItem({
         isDraggedOver
           ? 'border-stack-silver bg-stack-metal/40 shadow-md ring-1 ring-stack-silver/50'
           : isActive
-          ? 'border-stack-steel/50 bg-stack-surface-raised shadow-inner'
-          : 'border-stack-metal/30 bg-stack-surface/60 hover:border-stack-metal/80 hover:bg-stack-surface'
+            ? 'border-stack-steel/50 bg-stack-surface-raised shadow-inner'
+            : 'border-stack-metal/30 bg-stack-surface/60 hover:border-stack-metal/80 hover:bg-stack-surface'
       } ${className}`}
     >
       <div className="flex items-start justify-between gap-2">

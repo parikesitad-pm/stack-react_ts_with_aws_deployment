@@ -22,7 +22,11 @@ import {
 import { SearchBar } from '~/components/molecules/SearchBar';
 import { NoteListItem } from '~/features/notes/components/NoteListItem';
 import { FolderTree } from '~/features/notes/components/FolderTree';
-import type { Note, Folder, NoteFilter } from '~/features/notes/types/note.types';
+import type {
+  Note,
+  Folder,
+  NoteFilter,
+} from '~/features/notes/types/note.types';
 import type { AuthUser } from '~/features/auth/types/auth.types';
 
 export type SidebarLayoutMode = 'expanded' | 'compact' | 'zen';
@@ -115,7 +119,8 @@ export function AppSidebar({
     };
     if (showAccountMenu) {
       document.addEventListener('mousedown', handleOutsideClick);
-      return () => document.removeEventListener('mousedown', handleOutsideClick);
+      return () =>
+        document.removeEventListener('mousedown', handleOutsideClick);
     }
   }, [showAccountMenu]);
 
@@ -221,7 +226,8 @@ export function AppSidebar({
             title="Profile"
             className="w-8 h-8 rounded-full bg-stack-metal flex items-center justify-center text-stack-bone font-mono text-xs border border-stack-steel/30 hover:border-stack-silver transition-colors"
           >
-            {(user?.preferredName || user?.email || 'U')[0]?.toUpperCase() || 'U'}
+            {(user?.preferredName || user?.email || 'U')[0]?.toUpperCase() ||
+              'U'}
           </button>
         </div>
       </aside>
@@ -419,14 +425,17 @@ export function AppSidebar({
         >
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-7 h-7 rounded-full bg-stack-metal flex items-center justify-center text-stack-bone font-mono text-xs border border-stack-steel/30 shrink-0">
-              {(user?.preferredName || user?.email || 'U')[0]?.toUpperCase() || 'U'}
+              {(user?.preferredName || user?.email || 'U')[0]?.toUpperCase() ||
+                'U'}
             </div>
             <div className="flex flex-col min-w-0">
               <span className="font-bold text-xs text-stack-bone truncate group-hover:text-stack-silver">
                 {user?.preferredName || 'Operator'}
               </span>
               <span className="text-[10px] text-stack-steel truncate">
-                @{user?.username || (user?.email ? user.email.split('@')[0] : 'user')}
+                @
+                {user?.username ||
+                  (user?.email ? user.email.split('@')[0] : 'user')}
               </span>
             </div>
           </div>

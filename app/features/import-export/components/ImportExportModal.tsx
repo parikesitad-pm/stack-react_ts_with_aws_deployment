@@ -205,84 +205,83 @@ export function ImportExportModal({
 
         {/* Tab Content */}
         <div className="p-6 space-y-6 text-xs">
-          {activeTab === 'note' && (
-            !activeNote ? (
+          {activeTab === 'note' &&
+            (!activeNote ? (
               <div className="py-6 text-center text-stack-steel text-xs font-mono">
                 No active note selected. Create or select a note to export.
               </div>
             ) : (
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <h4 className="font-bold text-stack-bone">
-                  Active Document: {activeNote.title}
-                </h4>
-                <p className="text-stack-steel text-[11px]">
-                  Export or copy this document in standard UTF-8 Markdown.
-                </p>
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <h4 className="font-bold text-stack-bone">
+                    Active Document: {activeNote.title}
+                  </h4>
+                  <p className="text-stack-steel text-[11px]">
+                    Export or copy this document in standard UTF-8 Markdown.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2">
+                  <Button
+                    variant="secondary"
+                    size="md"
+                    onClick={() =>
+                      exportEngineService.exportSingleMarkdown(activeNote)
+                    }
+                    className="justify-center"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-stack-silver" />
+                    <span>Export .md</span>
+                  </Button>
+
+                  <Button
+                    variant="secondary"
+                    size="md"
+                    onClick={() =>
+                      exportEngineService.exportSingleNoteZip(
+                        activeNote,
+                        allAttachments
+                      )
+                    }
+                    className="justify-center"
+                  >
+                    <Archive className="w-3.5 h-3.5 text-stack-red-hover" />
+                    <span>Note + Assets ZIP</span>
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="md"
+                    onClick={handleCopyMarkdown}
+                    className="justify-center"
+                  >
+                    {isCopied ? (
+                      <Check className="w-3.5 h-3.5 text-green-500" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5" />
+                    )}
+                    <span>{isCopied ? 'Copied!' : 'Copy Markdown'}</span>
+                  </Button>
+                </div>
+
+                <div className="pt-4 border-t border-stack-metal/60">
+                  <h4 className="font-bold text-stack-bone mb-1">
+                    Import Single Document
+                  </h4>
+                  <p className="text-stack-steel text-[11px] mb-3">
+                    Upload a plain `.md` or `.txt` file into your workspace.
+                  </p>
+                  <Button
+                    variant="primary"
+                    size="md"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Select Markdown File</span>
+                  </Button>
+                </div>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2">
-                <Button
-                  variant="secondary"
-                  size="md"
-                  onClick={() =>
-                    exportEngineService.exportSingleMarkdown(activeNote)
-                  }
-                  className="justify-center"
-                >
-                  <FileText className="w-3.5 h-3.5 text-stack-silver" />
-                  <span>Export .md</span>
-                </Button>
-
-                <Button
-                  variant="secondary"
-                  size="md"
-                  onClick={() =>
-                    exportEngineService.exportSingleNoteZip(
-                      activeNote,
-                      allAttachments
-                    )
-                  }
-                  className="justify-center"
-                >
-                  <Archive className="w-3.5 h-3.5 text-stack-red-hover" />
-                  <span>Note + Assets ZIP</span>
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="md"
-                  onClick={handleCopyMarkdown}
-                  className="justify-center"
-                >
-                  {isCopied ? (
-                    <Check className="w-3.5 h-3.5 text-green-500" />
-                  ) : (
-                    <Copy className="w-3.5 h-3.5" />
-                  )}
-                  <span>{isCopied ? 'Copied!' : 'Copy Markdown'}</span>
-                </Button>
-              </div>
-
-              <div className="pt-4 border-t border-stack-metal/60">
-                <h4 className="font-bold text-stack-bone mb-1">
-                  Import Single Document
-                </h4>
-                <p className="text-stack-steel text-[11px] mb-3">
-                  Upload a plain `.md` or `.txt` file into your workspace.
-                </p>
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>Select Markdown File</span>
-                </Button>
-              </div>
-            </div>
-            )
-          )}
+            ))}
 
           {activeTab === 'workspace' && (
             <div className="space-y-4">

@@ -53,7 +53,10 @@ export function FolderItem({
 
   const elementRef = useRef<HTMLDivElement | null>(null);
 
-  const childFolders = folderTreeService.getFolderChildren(folder.id, allFolders);
+  const childFolders = folderTreeService.getFolderChildren(
+    folder.id,
+    allFolders
+  );
   const folderNotes = notes.filter((n) => n.folderId === folder.id);
 
   useEffect(() => {
@@ -170,7 +173,8 @@ export function FolderItem({
                 value={nameInput}
                 onChange={(e) => setNameInput(e.target.value)}
                 onBlur={() => {
-                  if (nameInput.trim()) onRenameFolder(folder.id, nameInput.trim());
+                  if (nameInput.trim())
+                    onRenameFolder(folder.id, nameInput.trim());
                   setIsEditing(false);
                 }}
                 className="w-full bg-stack-surface border border-stack-steel/50 px-1 py-0.5 text-xs text-stack-bone rounded focus:outline-none"

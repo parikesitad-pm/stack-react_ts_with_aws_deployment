@@ -60,7 +60,9 @@ export function VerifyEmailForm() {
     try {
       // Simulate verifying email code
       if (typeof window !== 'undefined') {
-        localStorage.removeItem(`stack_pending_verify_${rawEmail.toLowerCase()}`);
+        localStorage.removeItem(
+          `stack_pending_verify_${rawEmail.toLowerCase()}`
+        );
       }
       // Log in and route to onboarding/app
       loginWithProvider('email', rawEmail);
@@ -141,7 +143,9 @@ export function VerifyEmailForm() {
               maxLength={6}
               value={code}
               onChange={(e) => {
-                setCode(e.target.value.replace(/[^0-9A-Za-z]/g, '').slice(0, 6));
+                setCode(
+                  e.target.value.replace(/[^0-9A-Za-z]/g, '').slice(0, 6)
+                );
                 setError(null);
               }}
               placeholder="123456"

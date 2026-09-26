@@ -28,9 +28,9 @@ export function meta() {
     {
       name: 'description',
       content:
-        'STACK is a local-first Markdown notes app for writing, organizing, and owning your notes. Installable as a desktop PWA.',
+        'STACK is a local-first Markdown notes app for writing, organizing, importing, exporting, and owning your notes. Installable as a desktop PWA.',
     },
-    { tagName: 'link', rel: 'canonical', href: 'https://stack-13.vercel.app/' },
+    { tagName: 'link', rel: 'canonical', href: 'https://stack-md.online/' },
     { name: 'robots', content: 'index, follow' },
     {
       property: 'og:title',
@@ -39,13 +39,13 @@ export function meta() {
     {
       property: 'og:description',
       content:
-        'STACK is a local-first Markdown notes app for writing, organizing, and owning your notes. Installable as a desktop PWA.',
+        'STACK is a local-first Markdown notes app for writing, organizing, importing, exporting, and owning your notes. Installable as a desktop PWA.',
     },
     { property: 'og:type', content: 'website' },
-    { property: 'og:url', content: 'https://stack-13.vercel.app/' },
+    { property: 'og:url', content: 'https://stack-md.online/' },
     {
       property: 'og:image',
-      content: 'https://stack-13.vercel.app/brand/stack-logo.webp',
+      content: 'https://stack-md.online/brand/stack-logo.webp',
     },
     { name: 'twitter:card', content: 'summary_large_image' },
     {
@@ -55,7 +55,11 @@ export function meta() {
     {
       name: 'twitter:description',
       content:
-        'STACK is a local-first Markdown notes app for writing, organizing, and owning your notes. Installable as a desktop PWA.',
+        'STACK is a local-first Markdown notes app for writing, organizing, importing, exporting, and owning your notes. Installable as a desktop PWA.',
+    },
+    {
+      name: 'twitter:image',
+      content: 'https://stack-md.online/brand/stack-logo.webp',
     },
     { name: 'theme-color', content: '#090A0B' },
   ];
@@ -100,6 +104,7 @@ export default function LandingPage() {
             '@context': 'https://schema.org',
             '@type': 'SoftwareApplication',
             name: 'STACK',
+            url: 'https://stack-md.online',
             applicationCategory: 'ProductivityApplication',
             operatingSystem: 'Windows, Linux, macOS, Web',
             description: 'Markdown notes without the noise.',
@@ -139,7 +144,9 @@ export default function LandingPage() {
             <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
               <Link to={isAuthenticated ? '/app' : '/auth/register'}>
                 <Button variant="primary" size="lg" className="shadow-lg">
-                  <span>{isAuthenticated ? 'Go to workspace' : 'Get started'}</span>
+                  <span>
+                    {isAuthenticated ? 'Go to workspace' : 'Get started'}
+                  </span>
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
@@ -320,9 +327,8 @@ export default function LandingPage() {
               </h3>
 
               <p className="mx-auto max-w-xl font-mono text-xs sm:text-sm text-stack-steel leading-relaxed">
-                Install STACK directly from your browser. No app store required,
-                zero background telemetry daemons, and instant launch with full
-                offline capabilities.
+                Markdown notes without the noise. Install STACK directly from a
+                supported browser. No app store required.
               </p>
 
               <div className="flex flex-wrap items-center justify-center gap-2 pt-1 font-mono text-[11px]">

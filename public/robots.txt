@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /$
+Allow: /docs$
+Allow: /help$
+Allow: /changelog$
+Disallow: /app
+Disallow: /app/*
+Disallow: /auth/
+Disallow: /auth/*
+Disallow: /profile
+Disallow: /profile/*
+
+Sitemap: https://stack-md.online/sitemap.xml

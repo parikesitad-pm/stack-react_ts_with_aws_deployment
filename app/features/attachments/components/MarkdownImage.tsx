@@ -1,8 +1,7 @@
 import { useResolvedAttachmentUrl } from '../hooks/useResolvedAttachmentUrl';
 import { MissingAttachment } from './MissingAttachment';
 
-export interface MarkdownImageProps
-  extends React.ImgHTMLAttributes<HTMLImageElement> {
+export interface MarkdownImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src?: string;
   alt?: string;
 }

@@ -58,7 +58,9 @@ export function PublicNavbar() {
                 title="Account"
                 className="w-7 h-7 rounded-full bg-stack-metal flex items-center justify-center text-stack-bone font-mono text-xs border border-stack-steel/40"
               >
-                {(user?.preferredName || user?.email || 'U')[0]?.toUpperCase() || 'U'}
+                {(user?.preferredName ||
+                  user?.email ||
+                  'U')[0]?.toUpperCase() || 'U'}
               </Link>
             </div>
           ) : (

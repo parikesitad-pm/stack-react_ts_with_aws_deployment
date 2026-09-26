@@ -711,7 +711,7 @@ export function ProfileModal({
                       <span>GitHub Repository</span>
                     </a>
                     <a
-                      href="https://stack-13.vercel.app"
+                      href="https://stack-md.online"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 text-xs text-stack-bone hover:underline"

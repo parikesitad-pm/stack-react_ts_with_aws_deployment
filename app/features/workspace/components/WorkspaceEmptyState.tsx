@@ -30,8 +30,8 @@ export function WorkspaceEmptyState({
             Hi, {preferredName || 'Operator'}. Your stack is empty.
           </h2>
           <p className="text-xs text-stack-silver leading-relaxed max-w-sm mx-auto">
-            Zero noise, zero tracking. Write Markdown notes committed directly to
-            your local storage.
+            Zero noise, zero tracking. Write Markdown notes committed directly
+            to your local storage.
           </p>
         </div>
 

@@ -13,7 +13,7 @@ export function meta() {
     {
       tagName: 'link',
       rel: 'canonical',
-      href: 'https://stack-13.vercel.app/changelog',
+      href: 'https://stack-md.online/changelog',
     },
     { name: 'robots', content: 'index, follow' },
     { property: 'og:title', content: 'Changelog & Releases — STACK' },
@@ -23,7 +23,16 @@ export function meta() {
         'Full release history, changelog, and evolution of STACK Markdown application.',
     },
     { property: 'og:type', content: 'article' },
-    { property: 'og:url', content: 'https://stack-13.vercel.app/changelog' },
+    { property: 'og:url', content: 'https://stack-md.online/changelog' },
+    {
+      property: 'og:image',
+      content: 'https://stack-md.online/brand/stack-logo.webp',
+    },
+    { name: 'twitter:card', content: 'summary_large_image' },
+    {
+      name: 'twitter:image',
+      content: 'https://stack-md.online/brand/stack-logo.webp',
+    },
   ];
 }
 

@@ -45,7 +45,9 @@ export function usePwaInstall() {
     const ua = navigator.userAgent.toLowerCase();
     const isFirefox = ua.includes('firefox');
     const isSafari =
-      ua.includes('safari') && !ua.includes('chrome') && !ua.includes('android');
+      ua.includes('safari') &&
+      !ua.includes('chrome') &&
+      !ua.includes('android');
     const isChromium =
       ua.includes('chrome') || ua.includes('chromium') || ua.includes('edg');
     const isLinux = ua.includes('linux');

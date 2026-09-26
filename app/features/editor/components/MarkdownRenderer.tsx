@@ -54,17 +54,26 @@ export function MarkdownRenderer({
             </h4>
           ),
           p: ({ children, ...props }) => (
-            <p className="my-2.5 text-sm leading-relaxed text-stack-silver" {...props}>
+            <p
+              className="my-2.5 text-sm leading-relaxed text-stack-silver"
+              {...props}
+            >
               {children}
             </p>
           ),
           ul: ({ children, ...props }) => (
-            <ul className="my-2.5 ml-5 list-disc space-y-1 text-sm text-stack-silver" {...props}>
+            <ul
+              className="my-2.5 ml-5 list-disc space-y-1 text-sm text-stack-silver"
+              {...props}
+            >
               {children}
             </ul>
           ),
           ol: ({ children, ...props }) => (
-            <ol className="my-2.5 ml-5 list-decimal space-y-1 text-sm text-stack-silver" {...props}>
+            <ol
+              className="my-2.5 ml-5 list-decimal space-y-1 text-sm text-stack-silver"
+              {...props}
+            >
               {children}
             </ol>
           ),
@@ -81,7 +90,12 @@ export function MarkdownRenderer({
               {children}
             </blockquote>
           ),
-          code: ({ inline, className: codeClassName, children, ...props }: any) => {
+          code: ({
+            inline,
+            className: codeClassName,
+            children,
+            ...props
+          }: any) => {
             if (inline) {
               return (
                 <code
@@ -116,7 +130,10 @@ export function MarkdownRenderer({
             </div>
           ),
           thead: ({ children, ...props }) => (
-            <thead className="bg-stack-surface-raised text-stack-bone" {...props}>
+            <thead
+              className="bg-stack-surface-raised text-stack-bone"
+              {...props}
+            >
               {children}
             </thead>
           ),

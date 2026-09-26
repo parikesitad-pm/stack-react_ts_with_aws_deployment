@@ -81,7 +81,10 @@ export function RegisterForm() {
       );
 
       // Store unverified registration state
-      localStorage.setItem(`stack_pending_verify_${email.trim().toLowerCase()}`, 'true');
+      localStorage.setItem(
+        `stack_pending_verify_${email.trim().toLowerCase()}`,
+        'true'
+      );
 
       // Navigate to verification screen with email parameter
       navigate(`/auth/verify?email=${encodeURIComponent(email.trim())}`);

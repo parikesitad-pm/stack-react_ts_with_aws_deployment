@@ -1,11 +1,18 @@
 import { useState, useMemo, useEffect, useRef, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router';
 import { initialNotes } from '~/features/notes/data/mockNotes';
-import type { Note, Folder, NoteFilter } from '~/features/notes/types/note.types';
+import type {
+  Note,
+  Folder,
+  NoteFilter,
+} from '~/features/notes/types/note.types';
 import { folderTreeService } from '~/features/notes/services/folderTree.service';
 import type { SyncState } from '~/components/atoms/StatusIndicator';
 import type { EditorMode } from '~/components/molecules/EditorModeSwitcher';
-import { AppSidebar, type SidebarLayoutMode } from '~/components/organisms/AppSidebar';
+import {
+  AppSidebar,
+  type SidebarLayoutMode,
+} from '~/components/organisms/AppSidebar';
 import { AppHeader } from '~/components/organisms/AppHeader';
 import { MarkdownPreview } from '~/features/editor/components/MarkdownPreview';
 import { CommandPaletteModal } from '~/features/search/components/CommandPaletteModal';
@@ -90,7 +97,10 @@ export default function AppPage() {
 
   const [activeNoteId, setActiveNoteId] = useState<string>(() => {
     if (typeof window === 'undefined') return '';
-    return localStorage.getItem('stack_active_note_id') || (initialNotes[0]?.id ?? '');
+    return (
+      localStorage.getItem('stack_active_note_id') ||
+      (initialNotes[0]?.id ?? '')
+    );
   });
 
   const [editorMode, setEditorMode] = useState<EditorMode>('split');
@@ -120,7 +130,9 @@ export default function AppPage() {
   } | null>(null);
 
   // Attachments per note
-  const [attachments, setAttachments] = useState<Record<string, Attachment[]>>({});
+  const [attachments, setAttachments] = useState<Record<string, Attachment[]>>(
+    {}
+  );
 
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -400,7 +412,10 @@ export default function AppPage() {
 
   const handleDeleteFolder = (folderId: string) => {
     // Collect all descendants
-    const descendants = folderTreeService.getFolderDescendants(folderId, folders);
+    const descendants = folderTreeService.getFolderDescendants(
+      folderId,
+      folders
+    );
     const doomedFolderIds = new Set([folderId, ...descendants]);
 
     // Unfile any notes inside deleted folders
@@ -416,7 +431,10 @@ export default function AppPage() {
     setFolders((prev) => prev.filter((f) => !doomedFolderIds.has(f.id)));
   };
 
-  const handleMoveFolder = (folderId: string, targetParentId: string | null) => {
+  const handleMoveFolder = (
+    folderId: string,
+    targetParentId: string | null
+  ) => {
     if (folderTreeService.wouldCreateCycle(folderId, targetParentId, folders)) {
       return;
     }
@@ -656,9 +674,13 @@ export default function AppPage() {
               onDeleteNote={handleDeleteNote}
               editorMode={editorMode}
               onModeChange={setEditorMode}
-              onToggleMobileSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
+              onToggleMobileSidebar={() =>
+                setIsMobileSidebarOpen((prev) => !prev)
+              }
               onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
-              onToggleAttachments={() => setIsAttachmentDrawerOpen((prev) => !prev)}
+              onToggleAttachments={() =>
+                setIsAttachmentDrawerOpen((prev) => !prev)
+              }
               onToggleOutline={() => setIsOutlineOpen((prev) => !prev)}
               isOutlineOpen={isOutlineOpen}
               onOpenImportExport={() => setIsImportExportOpen(true)}

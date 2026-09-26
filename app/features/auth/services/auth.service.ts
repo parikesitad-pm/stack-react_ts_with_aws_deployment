@@ -200,7 +200,10 @@ export class AuthService {
   static async claimUsername(
     username: string,
     userSub: string
-  ): Promise<{ success: boolean; error?: 'USERNAME_TAKEN' | 'INVALID_FORMAT' }> {
+  ): Promise<{
+    success: boolean;
+    error?: 'USERNAME_TAKEN' | 'INVALID_FORMAT';
+  }> {
     const normalized = this.sanitizeUsername(username);
     if (!normalized || normalized.length < 3) {
       return { success: false, error: 'INVALID_FORMAT' };

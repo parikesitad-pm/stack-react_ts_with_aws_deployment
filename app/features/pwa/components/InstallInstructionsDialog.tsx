@@ -49,7 +49,8 @@ export function InstallInstructionsDialog({
               <p className="text-[11px] text-stack-steel">
                 Click the <strong>Install</strong> icon in the address bar
                 (right side, next to the bookmark star) or open Menu (⋮) →{' '}
-                <strong>Save and share</strong> → <strong>Install STACK</strong>.
+                <strong>Save and share</strong> → <strong>Install STACK</strong>
+                .
               </p>
             </div>
 
@@ -72,7 +73,8 @@ export function InstallInstructionsDialog({
               </h4>
               <p className="text-[11px] text-stack-steel">
                 Click <strong>File</strong> in menu bar →{' '}
-                <strong>Add to Dock…</strong> to run STACK in its own standalone window.
+                <strong>Add to Dock…</strong> to run STACK in its own standalone
+                window.
               </p>
             </div>
 
@@ -82,7 +84,8 @@ export function InstallInstructionsDialog({
                 <span>Mozilla Firefox</span>
               </h4>
               <p className="text-[11px] text-stack-steel">
-                Firefox desktop runs STACK with full offline IndexedDB caching. Bookmark this tab (Ctrl+D / Cmd+D) for immediate access anytime.
+                Firefox desktop runs STACK with full offline IndexedDB caching.
+                Bookmark this tab (Ctrl+D / Cmd+D) for immediate access anytime.
               </p>
             </div>
           </div>

@@ -1,6 +1,13 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router';
-import { Shield, ArrowRight, User, Lock, AlertCircle, Loader2 } from 'lucide-react';
+import {
+  Shield,
+  ArrowRight,
+  User,
+  Lock,
+  AlertCircle,
+  Loader2,
+} from 'lucide-react';
 import { Button } from '~/components/atoms/Button';
 import { useAuthSession } from '../hooks/useAuthSession';
 
@@ -12,9 +19,7 @@ export function Auth0LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleProviderLogin = (
-    provider: 'google-oauth2' | 'github'
-  ) => {
+  const handleProviderLogin = (provider: 'google-oauth2' | 'github') => {
     if (isLoading) return;
     setIsLoading(true);
     setError(null);
@@ -41,7 +46,10 @@ export function Auth0LoginForm() {
 
     try {
       // Authenticate via Auth0 flow
-      loginWithProvider('email', identifier.includes('@') ? identifier : undefined);
+      loginWithProvider(
+        'email',
+        identifier.includes('@') ? identifier : undefined
+      );
       navigate('/auth/callback?provider=database');
     } catch {
       // Generic error: never disclose whether username/email exists
@@ -184,7 +192,9 @@ export function Auth0LoginForm() {
 
       {/* Switch to Register */}
       <div className="text-center pt-2 border-t border-stack-metal/40">
-        <span className="text-stack-steel text-[11px]">Don't have an account? </span>
+        <span className="text-stack-steel text-[11px]">
+          Don't have an account?{' '}
+        </span>
         <Link
           to="/auth/register"
           className="text-[11px] text-stack-bone hover:underline font-bold"

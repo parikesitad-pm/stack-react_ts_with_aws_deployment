@@ -1,4 +1,17 @@
 {
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.stack-md.online"
+        }
+      ],
+      "destination": "https://stack-md.online/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/app",

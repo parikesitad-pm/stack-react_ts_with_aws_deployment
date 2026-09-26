@@ -13,7 +13,7 @@ export function meta() {
     {
       tagName: 'link',
       rel: 'canonical',
-      href: 'https://stack-13.vercel.app/help',
+      href: 'https://stack-md.online/help',
     },
     { name: 'robots', content: 'index, follow' },
     { property: 'og:title', content: 'Assistance & Protocols — STACK' },
@@ -23,7 +23,16 @@ export function meta() {
         'Frequently asked questions, offline usage, and storage protocols for STACK.',
     },
     { property: 'og:type', content: 'article' },
-    { property: 'og:url', content: 'https://stack-13.vercel.app/help' },
+    { property: 'og:url', content: 'https://stack-md.online/help' },
+    {
+      property: 'og:image',
+      content: 'https://stack-md.online/brand/stack-logo.webp',
+    },
+    { name: 'twitter:card', content: 'summary_large_image' },
+    {
+      name: 'twitter:image',
+      content: 'https://stack-md.online/brand/stack-logo.webp',
+    },
   ];
 }
 

@@ -37,7 +37,7 @@ export function getAuth0Config(): Auth0Config {
   const redirectUri =
     typeof window !== 'undefined'
       ? `${window.location.origin}/auth/callback`
-      : 'https://stack-13.vercel.app/auth/callback';
+      : 'https://stack-md.online/auth/callback';
 
   return { domain, clientId, audience, redirectUri };
 }

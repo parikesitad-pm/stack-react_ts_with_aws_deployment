@@ -14,7 +14,7 @@ export function meta() {
     {
       tagName: 'link',
       rel: 'canonical',
-      href: 'https://stack-13.vercel.app/docs',
+      href: 'https://stack-md.online/docs',
     },
     { name: 'robots', content: 'index, follow' },
     { property: 'og:title', content: 'System Documentation — STACK' },
@@ -24,7 +24,16 @@ export function meta() {
         'Technical operational guide, architecture, and write pipeline for STACK Markdown notes engine.',
     },
     { property: 'og:type', content: 'article' },
-    { property: 'og:url', content: 'https://stack-13.vercel.app/docs' },
+    { property: 'og:url', content: 'https://stack-md.online/docs' },
+    {
+      property: 'og:image',
+      content: 'https://stack-md.online/brand/stack-logo.webp',
+    },
+    { name: 'twitter:card', content: 'summary_large_image' },
+    {
+      name: 'twitter:image',
+      content: 'https://stack-md.online/brand/stack-logo.webp',
+    },
   ];
 }
 
