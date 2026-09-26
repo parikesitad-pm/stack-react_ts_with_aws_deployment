@@ -1,4 +1,5 @@
 import { PublicNavbar } from '~/components/molecules/PublicNavbar';
+import { PublicFooter } from '~/components/molecules/PublicFooter';
 import { Badge } from '~/components/atoms/Badge';
 
 export default function ChangelogPage() {
@@ -57,6 +58,7 @@ export default function ChangelogPage() {
           </div>
         </div>
       </main>
+      <PublicFooter />
     </div>
   );
 }

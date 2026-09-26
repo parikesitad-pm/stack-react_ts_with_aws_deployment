@@ -1,4 +1,5 @@
 import { PublicNavbar } from '~/components/molecules/PublicNavbar';
+import { PublicFooter } from '~/components/molecules/PublicFooter';
 import { Badge } from '~/components/atoms/Badge';
 
 export default function HelpPage() {
@@ -44,6 +45,7 @@ export default function HelpPage() {
           ))}
         </div>
       </main>
+      <PublicFooter />
     </div>
   );
 }

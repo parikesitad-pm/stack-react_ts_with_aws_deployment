@@ -1,5 +1,5 @@
-import { Link } from 'react-router';
 import { PublicNavbar } from '~/components/molecules/PublicNavbar';
+import { PublicFooter } from '~/components/molecules/PublicFooter';
 import { Badge } from '~/components/atoms/Badge';
 import { Kbd } from '~/components/atoms/Kbd';
 
@@ -81,6 +81,7 @@ export default function DocsPage() {
           </section>
         </div>
       </main>
+      <PublicFooter />
     </div>
   );
 }
