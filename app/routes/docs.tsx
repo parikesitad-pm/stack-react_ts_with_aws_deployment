@@ -11,7 +11,11 @@ export function meta() {
       content:
         'Technical operational guide, architecture, and write pipeline for STACK Markdown notes engine.',
     },
-    { tagName: 'link', rel: 'canonical', href: 'https://stack-13.vercel.app/docs' },
+    {
+      tagName: 'link',
+      rel: 'canonical',
+      href: 'https://stack-13.vercel.app/docs',
+    },
     { name: 'robots', content: 'index, follow' },
     { property: 'og:title', content: 'System Documentation — STACK' },
     {

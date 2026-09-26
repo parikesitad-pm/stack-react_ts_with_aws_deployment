@@ -27,15 +27,12 @@ export const auth0MockService = {
 
     const raw = localStorage.getItem(SESSION_KEY);
     if (!raw) {
-      // Default to initial authenticated operator for smooth development/demo
-      const initialSession: Auth0Session = {
-        isAuthenticated: true,
-        user: DEFAULT_AUTH0_USER,
-        token: `mock-jwt-token-${DEFAULT_AUTH0_USER.sub}`,
-        hasCompletedOnboarding: true,
+      return {
+        isAuthenticated: false,
+        user: null,
+        token: null,
+        hasCompletedOnboarding: false,
       };
-      localStorage.setItem(SESSION_KEY, JSON.stringify(initialSession));
-      return initialSession;
     }
 
     try {
@@ -90,6 +87,7 @@ export const auth0MockService = {
       email,
       name,
       preferredName: undefined,
+      username: undefined,
       dateOfBirth: undefined,
       picture: '',
       provider,
@@ -108,14 +106,20 @@ export const auth0MockService = {
     return newUser;
   },
 
-  completeOnboarding(preferredName: string, dateOfBirth: string): Auth0User {
+  completeOnboarding(
+    preferredName: string,
+    username: string,
+    dateOfBirth: string
+  ): Auth0User {
     const current = this.getSession();
     if (!current.user) throw new Error('No active session');
 
     const updatedUser: Auth0User = {
       ...current.user,
       preferredName,
+      username: username.replace(/^@+/, '').toLowerCase(),
       dateOfBirth,
+      onboardingCompletedAt: new Date().toISOString(),
     };
 
     this.setSession({

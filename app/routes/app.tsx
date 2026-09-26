@@ -1,10 +1,11 @@
 import { useState, useMemo, useEffect, useRef, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router';
 import { initialNotes } from '~/features/notes/data/mockNotes';
-import type { Note, NoteFilter } from '~/features/notes/types/note.types';
+import type { Note, Folder, NoteFilter } from '~/features/notes/types/note.types';
+import { folderTreeService } from '~/features/notes/services/folderTree.service';
 import type { SyncState } from '~/components/atoms/StatusIndicator';
 import type { EditorMode } from '~/components/molecules/EditorModeSwitcher';
-import { AppSidebar } from '~/components/organisms/AppSidebar';
+import { AppSidebar, type SidebarLayoutMode } from '~/components/organisms/AppSidebar';
 import { AppHeader } from '~/components/organisms/AppHeader';
 import { MarkdownPreview } from '~/features/editor/components/MarkdownPreview';
 import { CommandPaletteModal } from '~/features/search/components/CommandPaletteModal';
@@ -19,6 +20,11 @@ import type { Attachment } from '~/features/attachments/types/attachment.types';
 import { DocumentOutline } from '~/features/editor/components/DocumentOutline';
 import { RecoveryDraftBanner } from '~/features/editor/components/RecoveryDraftBanner';
 import { ImportExportModal } from '~/features/import-export/components/ImportExportModal';
+import { WorkspaceEmptyState } from '~/features/workspace/components/WorkspaceEmptyState';
+import { CoachMarkTour } from '~/features/workspace/components/CoachMarkTour';
+import { ZenModeExitButton } from '~/features/workspace/components/ZenModeExitButton';
+import { usePwaInstall } from '~/features/pwa/hooks/usePwaInstall';
+import { InstallInstructionsDialog } from '~/features/pwa/components/InstallInstructionsDialog';
 
 const CodeMirrorEditor = lazy(() =>
   import('~/features/editor/components/CodeMirrorEditor').then((m) => ({
@@ -44,6 +50,13 @@ export default function AppPage() {
     signOut,
   } = useAuthSession();
 
+  const {
+    isInstallable,
+    triggerInstall,
+    isDialogOpen: isInstallDialogOpen,
+    setIsDialogOpen: setIsInstallDialogOpen,
+  } = usePwaInstall();
+
   // Cold start loader state (session-persisted so it only triggers on cold boot/reload)
   const [isStartupLoading, setIsStartupLoading] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -55,9 +68,41 @@ export default function AppPage() {
     return false;
   });
 
-  const [notes, setNotes] = useState<Note[]>(initialNotes);
-  const [activeNoteId, setActiveNoteId] = useState<string>('note-1');
+  const [notes, setNotes] = useState<Note[]>(() => {
+    if (typeof window === 'undefined') return initialNotes;
+    try {
+      const saved = localStorage.getItem('stack_notes');
+      return saved ? JSON.parse(saved) : initialNotes;
+    } catch {
+      return initialNotes;
+    }
+  });
+
+  const [folders, setFolders] = useState<Folder[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const saved = localStorage.getItem('stack_folders');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [activeNoteId, setActiveNoteId] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    return localStorage.getItem('stack_active_note_id') || (initialNotes[0]?.id ?? '');
+  });
+
   const [editorMode, setEditorMode] = useState<EditorMode>('split');
+  const [layoutMode, setLayoutMode] = useState<SidebarLayoutMode>(() => {
+    if (typeof window === 'undefined') return 'expanded';
+    const saved = localStorage.getItem('stack_sidebar_layout_mode');
+    if (saved === 'expanded' || saved === 'compact' || saved === 'zen') {
+      return saved;
+    }
+    return 'expanded';
+  });
+
   const [syncState, setSyncState] = useState<SyncState>('saved_locally');
   const [activeFilter, setActiveFilter] = useState<NoteFilter>('all');
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -67,30 +112,43 @@ export default function AppPage() {
   const [isAttachmentDrawerOpen, setIsAttachmentDrawerOpen] = useState(false);
   const [isOutlineOpen, setIsOutlineOpen] = useState(false);
   const [isImportExportOpen, setIsImportExportOpen] = useState(false);
+  const [isTourOpen, setIsTourOpen] = useState(false);
+
   const [recoveryDraft, setRecoveryDraft] = useState<{
     content: string;
     timeDiffSeconds: number;
   } | null>(null);
 
   // Attachments per note
-  const [attachments, setAttachments] = useState<Record<string, Attachment[]>>({
-    'note-1': [
-      {
-        id: 'att-sample-1',
-        ownerSub: user?.sub || 'isolated',
-        noteId: 'note-1',
-        name: 'screenshot-20260927-010212.webp',
-        mimeType: 'image/webp',
-        size: 84200,
-        localPath: './assets/screenshot-20260927-010212.webp',
-        createdAt: '2026-09-27T01:02:12.000Z',
-        syncStatus: 'synced',
-      },
-    ],
-  });
+  const [attachments, setAttachments] = useState<Record<string, Attachment[]>>({});
 
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Persist notes & folders
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('stack_notes', JSON.stringify(notes));
+    }
+  }, [notes]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('stack_folders', JSON.stringify(folders));
+    }
+  }, [folders]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && activeNoteId) {
+      localStorage.setItem('stack_active_note_id', activeNoteId);
+    }
+  }, [activeNoteId]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('stack_sidebar_layout_mode', layoutMode);
+    }
+  }, [layoutMode]);
 
   // Protected route guard
   useEffect(() => {
@@ -99,25 +157,24 @@ export default function AppPage() {
     }
   }, [isAuthenticated, isAuthLoading, navigate]);
 
-  const activeNote = useMemo((): Note => {
-    const found = notes.find((n) => n.id === activeNoteId) || notes[0];
-    if (found) return found;
-    return (
-      initialNotes[0] ?? {
-        id: 'fallback-note',
-        title: 'Untitled Note',
-        content: '# Untitled Note\n\nStart writing...',
-        tags: ['draft'],
-        isPinned: false,
-        isArchived: false,
-        createdAt: 'Just now',
-        updatedAt: 'Just now',
-        syncStatus: 'saved_locally',
-      }
-    );
+  // Check tour completion
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const sub = user?.sub || 'local';
+    const tourDone = localStorage.getItem(`stack_tour_completed_${sub}`);
+    if (!tourDone && notes.length === 0) {
+      setIsTourOpen(true);
+    }
+  }, [user?.sub, notes.length]);
+
+  const activeNote = useMemo((): Note | null => {
+    if (notes.length === 0) return null;
+    const found = notes.find((n) => n.id === activeNoteId);
+    return found || notes[0] || null;
   }, [notes, activeNoteId]);
 
   const currentAttachments = useMemo(() => {
+    if (!activeNoteId) return [];
     return attachments[activeNoteId] || [];
   }, [attachments, activeNoteId]);
 
@@ -133,19 +190,25 @@ export default function AppPage() {
     return Math.max(1, Math.ceil(wordCount / 200));
   }, [wordCount]);
 
-  // Check for unsaved crash recovery draft for the active note
+  // Check for unsaved crash recovery draft
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !activeNoteId) return;
     try {
       const raw = localStorage.getItem(`stack_draft_recovery_${activeNoteId}`);
       if (raw) {
-        const parsed = JSON.parse(raw) as { content: string; timestamp: number };
+        const parsed = JSON.parse(raw) as {
+          content: string;
+          timestamp: number;
+        };
         if (parsed.content && parsed.content !== activeNote?.content) {
           const diffSec = Math.max(
             1,
             Math.round((Date.now() - parsed.timestamp) / 1000)
           );
-          setRecoveryDraft({ content: parsed.content, timeDiffSeconds: diffSec });
+          setRecoveryDraft({
+            content: parsed.content,
+            timeDiffSeconds: diffSec,
+          });
           return;
         }
       }
@@ -155,7 +218,7 @@ export default function AppPage() {
     setRecoveryDraft(null);
   }, [activeNoteId, activeNote?.content]);
 
-  // Global key bindings: Ctrl+K, Ctrl+N, Ctrl+1/2/3
+  // Global key bindings: Ctrl+K, Ctrl+N, Ctrl+1/2/3, Escape (exit zen)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
@@ -178,12 +241,21 @@ export default function AppPage() {
         e.preventDefault();
         setEditorMode('read');
       }
+      if (e.key === 'Escape' && layoutMode === 'zen') {
+        e.preventDefault();
+        setLayoutMode('expanded');
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === '\\') {
+        e.preventDefault();
+        setLayoutMode((prev) => (prev === 'zen' ? 'expanded' : 'zen'));
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [layoutMode]);
 
   const handleContentChange = (newContent: string) => {
+    if (!activeNoteId) return;
     setSyncState('syncing');
 
     if (typeof window !== 'undefined') {
@@ -235,7 +307,10 @@ export default function AppPage() {
     const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
     for (const el of headings) {
       if (
-        el.textContent?.trim().toLowerCase().includes(headingText.trim().toLowerCase())
+        el.textContent
+          ?.trim()
+          .toLowerCase()
+          .includes(headingText.trim().toLowerCase())
       ) {
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         break;
@@ -255,6 +330,7 @@ export default function AppPage() {
   };
 
   const handleTitleChange = (newTitle: string) => {
+    if (!activeNoteId) return;
     setNotes((prevNotes) =>
       prevNotes.map((n) =>
         n.id === activeNoteId
@@ -265,6 +341,7 @@ export default function AppPage() {
   };
 
   const handleTogglePin = () => {
+    if (!activeNoteId) return;
     setNotes((prevNotes) =>
       prevNotes.map((n) =>
         n.id === activeNoteId ? { ...n, isPinned: !n.isPinned } : n
@@ -273,11 +350,13 @@ export default function AppPage() {
   };
 
   const handleDeleteNote = () => {
-    if (notes.length <= 1) return;
+    if (!activeNoteId) return;
     const remaining = notes.filter((n) => n.id !== activeNoteId);
     setNotes(remaining);
     if (remaining.length > 0 && remaining[0]) {
       setActiveNoteId(remaining[0].id);
+    } else {
+      setActiveNoteId('');
     }
   };
 
@@ -294,13 +373,89 @@ export default function AppPage() {
       isPinned: false,
       isArchived: false,
       syncStatus: 'saved_locally',
+      folderId: null,
+      order: notes.length,
     };
     setNotes([newNote, ...notes]);
     setActiveNoteId(newId);
   };
 
+  // Folder Operations
+  const handleCreateFolder = (name: string, parentId: string | null) => {
+    const newFolder: Folder = {
+      id: `folder-${Date.now()}`,
+      name,
+      parentId,
+      order: folders.length,
+      isExpanded: true,
+    };
+    setFolders((prev) => [...prev, newFolder]);
+  };
+
+  const handleRenameFolder = (folderId: string, newName: string) => {
+    setFolders((prev) =>
+      prev.map((f) => (f.id === folderId ? { ...f, name: newName } : f))
+    );
+  };
+
+  const handleDeleteFolder = (folderId: string) => {
+    // Collect all descendants
+    const descendants = folderTreeService.getFolderDescendants(folderId, folders);
+    const doomedFolderIds = new Set([folderId, ...descendants]);
+
+    // Unfile any notes inside deleted folders
+    setNotes((prevNotes) =>
+      prevNotes.map((n) =>
+        n.folderId && doomedFolderIds.has(n.folderId)
+          ? { ...n, folderId: null }
+          : n
+      )
+    );
+
+    // Remove folders
+    setFolders((prev) => prev.filter((f) => !doomedFolderIds.has(f.id)));
+  };
+
+  const handleMoveFolder = (folderId: string, targetParentId: string | null) => {
+    if (folderTreeService.wouldCreateCycle(folderId, targetParentId, folders)) {
+      return;
+    }
+    setFolders((prev) =>
+      prev.map((f) =>
+        f.id === folderId ? { ...f, parentId: targetParentId } : f
+      )
+    );
+  };
+
+  const handleMoveNoteToFolder = (
+    noteId: string,
+    targetFolderId: string | null
+  ) => {
+    setNotes((prevNotes) =>
+      prevNotes.map((n) =>
+        n.id === noteId ? { ...n, folderId: targetFolderId } : n
+      )
+    );
+  };
+
+  const handleReorderNote = (sourceNoteId: string, targetNoteId: string) => {
+    setNotes((prevNotes) => {
+      const sourceIndex = prevNotes.findIndex((n) => n.id === sourceNoteId);
+      const targetIndex = prevNotes.findIndex((n) => n.id === targetNoteId);
+      if (sourceIndex === -1 || targetIndex === -1) return prevNotes;
+
+      const updated = [...prevNotes];
+      const [moved] = updated.splice(sourceIndex, 1);
+      if (moved) {
+        updated.splice(targetIndex, 0, moved);
+      }
+      return updated;
+    });
+  };
+
   // Image paste handler (Ctrl+V)
   const handleEditorPaste = async (e: React.ClipboardEvent) => {
+    if (!activeNoteId) return;
     const items = e.clipboardData.items;
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
@@ -332,6 +487,7 @@ export default function AppPage() {
 
   // File upload handler
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!activeNoteId) return;
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
@@ -383,26 +539,45 @@ export default function AppPage() {
       <OnboardingModal
         isOpen={isAuthenticated && !hasCompletedOnboarding}
         initialEmail={user?.email}
-        onComplete={(name, dob) => completeOnboarding(name, dob)}
+        onComplete={(name, username, dob) =>
+          completeOnboarding(name, username, dob)
+        }
       />
+
+      {/* Zen Mode Exit Button */}
+      {layoutMode === 'zen' && (
+        <ZenModeExitButton onExit={() => setLayoutMode('expanded')} />
+      )}
 
       {/* Desktop Sidebar */}
       <AppSidebar
         notes={notes}
+        folders={folders}
         activeNoteId={activeNoteId}
         onSelectNote={setActiveNoteId}
         onCreateNote={handleCreateNote}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenProfile={() => setIsProfileOpen(true)}
+        onOpenImportExport={() => setIsImportExportOpen(true)}
         onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
         syncState={syncState}
         activeFilter={activeFilter}
         onFilterChange={setActiveFilter}
+        layoutMode={layoutMode}
+        onLayoutModeChange={setLayoutMode}
+        onMoveNoteToFolder={handleMoveNoteToFolder}
+        onReorderNote={handleReorderNote}
+        onMoveFolder={handleMoveFolder}
+        onCreateFolder={handleCreateFolder}
+        onRenameFolder={handleRenameFolder}
+        onDeleteFolder={handleDeleteFolder}
         user={user}
         onSignOut={() => {
           signOut();
           navigate('/auth/login', { replace: true });
         }}
+        canInstallPwa={isInstallable}
+        onInstallPwa={triggerInstall}
         className="hidden md:flex"
       />
 
@@ -418,6 +593,7 @@ export default function AppPage() {
           >
             <AppSidebar
               notes={notes}
+              folders={folders}
               activeNoteId={activeNoteId}
               onSelectNote={(id) => {
                 setActiveNoteId(id);
@@ -435,6 +611,10 @@ export default function AppPage() {
                 setIsProfileOpen(true);
                 setIsMobileSidebarOpen(false);
               }}
+              onOpenImportExport={() => {
+                setIsImportExportOpen(true);
+                setIsMobileSidebarOpen(false);
+              }}
               onOpenCommandPalette={() => {
                 setIsCommandPaletteOpen(true);
                 setIsMobileSidebarOpen(false);
@@ -442,11 +622,21 @@ export default function AppPage() {
               syncState={syncState}
               activeFilter={activeFilter}
               onFilterChange={setActiveFilter}
+              layoutMode="expanded"
+              onLayoutModeChange={() => {}}
+              onMoveNoteToFolder={handleMoveNoteToFolder}
+              onReorderNote={handleReorderNote}
+              onMoveFolder={handleMoveFolder}
+              onCreateFolder={handleCreateFolder}
+              onRenameFolder={handleRenameFolder}
+              onDeleteFolder={handleDeleteFolder}
               user={user}
               onSignOut={() => {
                 signOut();
                 navigate('/auth/login', { replace: true });
               }}
+              canInstallPwa={isInstallable}
+              onInstallPwa={triggerInstall}
               className="flex w-full h-full"
             />
           </div>
@@ -455,112 +645,130 @@ export default function AppPage() {
 
       {/* Main Workspace Area */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <AppHeader
-          title={activeNote?.title || 'Untitled'}
-          onTitleChange={handleTitleChange}
-          tags={activeNote?.tags || []}
-          isPinned={activeNote?.isPinned || false}
-          onTogglePin={handleTogglePin}
-          onDeleteNote={handleDeleteNote}
-          editorMode={editorMode}
-          onModeChange={setEditorMode}
-          onToggleMobileSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
-          onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
-          onToggleAttachments={() => setIsAttachmentDrawerOpen((prev) => !prev)}
-          onToggleOutline={() => setIsOutlineOpen((prev) => !prev)}
-          isOutlineOpen={isOutlineOpen}
-          onOpenImportExport={() => setIsImportExportOpen(true)}
-          onOpenProfile={() => setIsProfileOpen(true)}
-          attachmentCount={currentAttachments.length}
-          syncState={syncState}
-          wordCount={wordCount}
-          charCount={charCount}
-          readingTimeMinutes={readingTimeMinutes}
-        />
+        {notes.length > 0 && activeNote ? (
+          <>
+            <AppHeader
+              title={activeNote.title || 'Untitled'}
+              onTitleChange={handleTitleChange}
+              tags={activeNote.tags || []}
+              isPinned={activeNote.isPinned || false}
+              onTogglePin={handleTogglePin}
+              onDeleteNote={handleDeleteNote}
+              editorMode={editorMode}
+              onModeChange={setEditorMode}
+              onToggleMobileSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
+              onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+              onToggleAttachments={() => setIsAttachmentDrawerOpen((prev) => !prev)}
+              onToggleOutline={() => setIsOutlineOpen((prev) => !prev)}
+              isOutlineOpen={isOutlineOpen}
+              onOpenImportExport={() => setIsImportExportOpen(true)}
+              onOpenProfile={() => setIsProfileOpen(true)}
+              attachmentCount={currentAttachments.length}
+              syncState={syncState}
+              wordCount={wordCount}
+              charCount={charCount}
+              readingTimeMinutes={readingTimeMinutes}
+            />
 
-        {/* Recovery Draft Alert Banner */}
-        {recoveryDraft && (
-          <RecoveryDraftBanner
-            isVisible={true}
-            timeDiffSeconds={recoveryDraft.timeDiffSeconds}
-            onRestore={handleRestoreDraft}
-            onDiscard={handleDiscardDraft}
-          />
-        )}
+            {/* Recovery Draft Alert Banner */}
+            {recoveryDraft && (
+              <RecoveryDraftBanner
+                isVisible={true}
+                timeDiffSeconds={recoveryDraft.timeDiffSeconds}
+                onRestore={handleRestoreDraft}
+                onDiscard={handleDiscardDraft}
+              />
+            )}
 
-        {/* Viewport Modes */}
-        <div className="flex flex-1 overflow-hidden relative">
-          <div className="flex flex-1 flex-col overflow-hidden relative">
-            {/* Write Mode: CodeMirror editor only */}
-            {editorMode === 'write' && (
-              <div className="flex-1 h-full overflow-hidden">
-                <Suspense
-                  fallback={
-                    <div className="flex h-full w-full items-center justify-center font-mono text-xs text-stack-steel">
-                      Initializing Editor Engine...
+            {/* Viewport Modes */}
+            <div className="flex flex-1 overflow-hidden relative">
+              <div className="flex flex-1 flex-col overflow-hidden relative">
+                {/* Write Mode */}
+                {editorMode === 'write' && (
+                  <div className="flex-1 h-full overflow-hidden">
+                    <Suspense
+                      fallback={
+                        <div className="flex h-full w-full items-center justify-center font-mono text-xs text-stack-steel">
+                          Initializing Editor Engine...
+                        </div>
+                      }
+                    >
+                      <CodeMirrorEditor
+                        value={activeNote.content || ''}
+                        onChange={handleContentChange}
+                      />
+                    </Suspense>
+                  </div>
+                )}
+
+                {/* Split Mode */}
+                {editorMode === 'split' && (
+                  <div className="flex-1 flex flex-col md:flex-row h-full overflow-hidden">
+                    <div className="flex-1 h-1/2 md:h-full border-b md:border-b-0 md:border-r border-stack-metal/70 overflow-hidden">
+                      <Suspense
+                        fallback={
+                          <div className="flex h-full w-full items-center justify-center font-mono text-xs text-stack-steel">
+                            Initializing Editor Engine...
+                          </div>
+                        }
+                      >
+                        <CodeMirrorEditor
+                          value={activeNote.content || ''}
+                          onChange={handleContentChange}
+                        />
+                      </Suspense>
                     </div>
-                  }
-                >
-                  <CodeMirrorEditor
-                    value={activeNote?.content || ''}
-                    onChange={handleContentChange}
-                  />
-                </Suspense>
-              </div>
-            )}
+                    <div className="flex-1 h-1/2 md:h-full overflow-y-auto bg-stack-surface/30">
+                      <MarkdownPreview content={activeNote.content || ''} />
+                    </div>
+                  </div>
+                )}
 
-            {/* Split Mode: CodeMirror on left, rendered preview on right */}
-            {editorMode === 'split' && (
-              <div className="flex-1 flex flex-col md:flex-row h-full overflow-hidden">
-                <div className="flex-1 h-1/2 md:h-full border-b md:border-b-0 md:border-r border-stack-metal/70 overflow-hidden">
-                  <Suspense
-                    fallback={
-                      <div className="flex h-full w-full items-center justify-center font-mono text-xs text-stack-steel">
-                        Initializing Editor Engine...
-                      </div>
-                    }
-                  >
-                    <CodeMirrorEditor
-                      value={activeNote?.content || ''}
-                      onChange={handleContentChange}
-                    />
-                  </Suspense>
-                </div>
-                <div className="flex-1 h-1/2 md:h-full overflow-y-auto bg-stack-surface/30">
-                  <MarkdownPreview content={activeNote?.content || ''} />
-                </div>
-              </div>
-            )}
+                {/* Read Mode */}
+                {editorMode === 'read' && (
+                  <div className="flex-1 h-full overflow-y-auto bg-stack-surface/20">
+                    <MarkdownPreview content={activeNote.content || ''} />
+                  </div>
+                )}
 
-            {/* Read Mode: Formatted Preview only */}
-            {editorMode === 'read' && (
-              <div className="flex-1 h-full overflow-y-auto bg-stack-surface/20">
-                <div className="mx-auto max-w-4xl py-6">
-                  <MarkdownPreview content={activeNote?.content || ''} />
-                </div>
+                {/* Attachment Drawer */}
+                <AttachmentDrawer
+                  isOpen={isAttachmentDrawerOpen}
+                  onClose={() => setIsAttachmentDrawerOpen(false)}
+                  attachments={currentAttachments}
+                  onUploadClick={() => fileInputRef.current?.click()}
+                />
               </div>
-            )}
 
-            {/* Attachment Drawer */}
-            <AttachmentDrawer
-              isOpen={isAttachmentDrawerOpen}
-              onClose={() => setIsAttachmentDrawerOpen(false)}
-              attachments={currentAttachments}
-              onUploadClick={() => fileInputRef.current?.click()}
+              {/* Document Outline sidebar */}
+              <DocumentOutline
+                content={activeNote.content || ''}
+                isOpen={isOutlineOpen}
+                onClose={() => setIsOutlineOpen(false)}
+                onSelectHeading={handleSelectHeading}
+              />
+            </div>
+          </>
+        ) : (
+          /* Empty Workspace State */
+          <div className="flex flex-1 items-center justify-center bg-stack-surface/10">
+            <WorkspaceEmptyState
+              preferredName={user?.preferredName || 'Operator'}
+              onCreateNote={handleCreateNote}
+              onImportMarkdown={() => setIsImportExportOpen(true)}
+              onStartTour={() => setIsTourOpen(true)}
             />
           </div>
-
-          {/* Document Outline sidebar */}
-          <DocumentOutline
-            content={activeNote?.content || ''}
-            isOpen={isOutlineOpen}
-            onClose={() => setIsOutlineOpen(false)}
-            onSelectHeading={handleSelectHeading}
-          />
-        </div>
+        )}
       </div>
 
-      {/* Modals */}
+      {/* Modals & Tours */}
+      <CoachMarkTour
+        isOpen={isTourOpen}
+        userSub={user?.sub || 'local'}
+        onClose={() => setIsTourOpen(false)}
+      />
+
       <CommandPaletteModal
         isOpen={isCommandPaletteOpen}
         onClose={() => setIsCommandPaletteOpen(false)}
@@ -589,6 +797,11 @@ export default function AppPage() {
         allNotes={notes}
         allAttachments={Object.values(attachments).flat()}
         onImportNotes={handleImportNotes}
+      />
+
+      <InstallInstructionsDialog
+        isOpen={isInstallDialogOpen}
+        onClose={() => setIsInstallDialogOpen(false)}
       />
     </div>
   );

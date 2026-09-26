@@ -98,9 +98,14 @@ try {
   }
 
   fs.writeFileSync(CONFIG_FILE, fileContent, 'utf-8');
-  console.log('\x1b[32m✔ Landing page configuration updated successfully!\x1b[0m');
+  console.log(
+    '\x1b[32m✔ Landing page configuration updated successfully!\x1b[0m'
+  );
   console.log(params);
 } catch (err) {
-  console.error('\x1b[31m✖ Failed to update landing configuration:\x1b[0m', err.message);
+  console.error(
+    '\x1b[31m✖ Failed to update landing configuration:\x1b[0m',
+    err.message
+  );
   process.exit(1);
 }

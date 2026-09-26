@@ -3,12 +3,18 @@ frontend:
   phases:
     preBuild:
       commands:
+        - node --version
         - corepack enable
-        - corepack prepare pnpm@latest --activate
-        - pnpm install
+        - pnpm --version
+        - pnpm install --frozen-lockfile
     build:
       commands:
+        - pnpm run typecheck
         - pnpm run build
+        - test -f build/client/index.html
+        - test -f build/client/docs/index.html
+        - test -f build/client/help/index.html
+        - test -f build/client/changelog/index.html
   artifacts:
     baseDirectory: build/client
     files:
@@ -16,4 +22,3 @@ frontend:
   cache:
     paths:
       - node_modules/**/*
-      - .pnpm-store/**/*

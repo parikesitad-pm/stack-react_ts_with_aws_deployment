@@ -38,8 +38,16 @@ export function useAuthSession() {
   );
 
   const completeOnboarding = useCallback(
-    (preferredName: string, dateOfBirth: string): Auth0User => {
-      return auth0MockService.completeOnboarding(preferredName, dateOfBirth);
+    (
+      preferredName: string,
+      username: string,
+      dateOfBirth: string
+    ): Auth0User => {
+      return auth0MockService.completeOnboarding(
+        preferredName,
+        username,
+        dateOfBirth
+      );
     },
     []
   );

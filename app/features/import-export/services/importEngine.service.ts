@@ -45,11 +45,15 @@ export const importEngineService = {
         const fileData = zip.file(filename);
         if (fileData) {
           const rawText = await fileData.async('text');
-          const cleanName = filename.split('/').pop()?.replace(/\.md$/i, '') || 'Imported Note';
+          const cleanName =
+            filename.split('/').pop()?.replace(/\.md$/i, '') || 'Imported Note';
           const { frontmatter } = parseFrontmatter(rawText);
 
           let title = cleanName;
-          if (typeof frontmatter.title === 'string' && frontmatter.title.trim()) {
+          if (
+            typeof frontmatter.title === 'string' &&
+            frontmatter.title.trim()
+          ) {
             title = frontmatter.title.trim();
           }
 
@@ -68,7 +72,10 @@ export const importEngineService = {
   detectCollisions(
     candidates: ImportCandidate[],
     existingNotes: Note[]
-  ): { safe: ImportCandidate[]; collisions: { candidate: ImportCandidate; existing: Note }[] } {
+  ): {
+    safe: ImportCandidate[];
+    collisions: { candidate: ImportCandidate; existing: Note }[];
+  } {
     const safe: ImportCandidate[] = [];
     const collisions: { candidate: ImportCandidate; existing: Note }[] = [];
 

@@ -1,4 +1,4 @@
-import { X, Laptop, Monitor, Download, ExternalLink } from 'lucide-react';
+import { X, Laptop, Monitor, Download } from 'lucide-react';
 import { Button } from '~/components/atoms/Button';
 
 interface InstallInstructionsDialogProps {
@@ -48,9 +48,8 @@ export function InstallInstructionsDialog({
               </h4>
               <p className="text-[11px] text-stack-steel">
                 Click the <strong>Install</strong> icon in the address bar
-                (right side, next to the star/bookmark icon) or open Menu (⋮) →{' '}
-                <strong>Save and share</strong> → <strong>Install STACK</strong>
-                .
+                (right side, next to the bookmark star) or open Menu (⋮) →{' '}
+                <strong>Save and share</strong> → <strong>Install STACK</strong>.
               </p>
             </div>
 
@@ -73,8 +72,17 @@ export function InstallInstructionsDialog({
               </h4>
               <p className="text-[11px] text-stack-steel">
                 Click <strong>File</strong> in menu bar →{' '}
-                <strong>Add to Dock…</strong> to run STACK in its own standalone
-                window.
+                <strong>Add to Dock…</strong> to run STACK in its own standalone window.
+              </p>
+            </div>
+
+            <div className="p-3 rounded border border-stack-metal bg-stack-surface-raised space-y-1">
+              <h4 className="font-bold text-stack-bone flex items-center gap-1.5">
+                <Monitor className="w-3.5 h-3.5 text-stack-steel" />
+                <span>Mozilla Firefox</span>
+              </h4>
+              <p className="text-[11px] text-stack-steel">
+                Firefox desktop runs STACK with full offline IndexedDB caching. Bookmark this tab (Ctrl+D / Cmd+D) for immediate access anytime.
               </p>
             </div>
           </div>

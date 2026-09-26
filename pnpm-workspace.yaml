@@ -1,2 +1,3 @@
 allowBuilds:
+  browser-tabs-lock: set this to true or false
   esbuild: true

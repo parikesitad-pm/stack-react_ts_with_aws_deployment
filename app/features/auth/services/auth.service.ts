@@ -150,4 +150,88 @@ export class AuthService {
       localStorage.removeItem(MOCK_STORAGE_KEY);
     }
   }
+
+  /**
+   * Advisory sanitization of preferred name to @username
+   */
+  static sanitizeUsername(input: string): string {
+    return input
+      .trim()
+      .toLowerCase()
+      .replace(/^@+/, '')
+      .replace(/[^a-z0-9_]/g, '')
+      .slice(0, 20);
+  }
+
+  /**
+   * Authoritative backend API: POST /profile/username/check
+   */
+  static async checkUsernameAvailability(username: string): Promise<boolean> {
+    const normalized = this.sanitizeUsername(username);
+    if (!normalized || normalized.length < 3) return false;
+
+    // Simulate authoritative backend DynamoDB conditional check:
+    // In production backend: attribute_not_exists(PK) where PK = `USERNAME#${normalized}`
+    const takenUsernames = new Set([
+      'admin',
+      'root',
+      'stack',
+      'modula',
+      'system',
+      'support',
+      'help',
+    ]);
+    if (typeof window !== 'undefined') {
+      const claimedKey = `stack_claimed_usernames`;
+      const claimed = JSON.parse(
+        localStorage.getItem(claimedKey) || '[]'
+      ) as string[];
+      claimed.forEach((u) => takenUsernames.add(u));
+    }
+    return !takenUsernames.has(normalized);
+  }
+
+  /**
+   * Authoritative backend API: POST /profile/username/claim
+   * Uses DynamoDB atomic conditional write:
+   * PK: USERNAME#<lowercase>, SK: CLAIM
+   * ConditionExpression: attribute_not_exists(PK)
+   */
+  static async claimUsername(
+    username: string,
+    userSub: string
+  ): Promise<{ success: boolean; error?: 'USERNAME_TAKEN' | 'INVALID_FORMAT' }> {
+    const normalized = this.sanitizeUsername(username);
+    if (!normalized || normalized.length < 3) {
+      return { success: false, error: 'INVALID_FORMAT' };
+    }
+
+    const isAvailable = await this.checkUsernameAvailability(normalized);
+    if (!isAvailable) {
+      return { success: false, error: 'USERNAME_TAKEN' };
+    }
+
+    // Atomic conditional write simulation
+    if (typeof window !== 'undefined') {
+      const claimedKey = `stack_claimed_usernames`;
+      const claimed = JSON.parse(
+        localStorage.getItem(claimedKey) || '[]'
+      ) as string[];
+      if (claimed.includes(normalized)) {
+        return { success: false, error: 'USERNAME_TAKEN' };
+      }
+      claimed.push(normalized);
+      localStorage.setItem(claimedKey, JSON.stringify(claimed));
+    }
+
+    return { success: true };
+  }
+
+  /**
+   * Suggest alternatives if chosen username is taken
+   */
+  static suggestAlternatives(base: string): string[] {
+    const clean = this.sanitizeUsername(base) || 'operator';
+    return [`@${clean}13`, `@${clean}pm`, `@${clean}_dev`];
+  }
 }

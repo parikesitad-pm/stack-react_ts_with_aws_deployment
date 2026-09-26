@@ -1,5 +1,21 @@
 import { useState, useEffect, useCallback } from 'react';
 
+export type PwaInstallStatus =
+  | 'idle'
+  | 'available'
+  | 'installing'
+  | 'installed'
+  | 'unsupported';
+
+export interface BrowserCapability {
+  isChromium: boolean;
+  isSafari: boolean;
+  isFirefox: boolean;
+  isLinux: boolean;
+  isMac: boolean;
+  isWindows: boolean;
+}
+
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
   readonly userChoice: Promise<{
@@ -12,59 +28,98 @@ interface BeforeInstallPromptEvent extends Event {
 export function usePwaInstall() {
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
-  const [isInstalled, setIsInstalled] = useState(false);
-  const [isInstallable, setIsInstallable] = useState(false);
+  const [status, setStatus] = useState<PwaInstallStatus>('idle');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [browser, setBrowser] = useState<BrowserCapability>({
+    isChromium: false,
+    isSafari: false,
+    isFirefox: false,
+    isLinux: false,
+    isMac: false,
+    isWindows: false,
+  });
 
   useEffect(() => {
-    // Check if running in standalone PWA mode
+    if (typeof window === 'undefined') return;
+
+    const ua = navigator.userAgent.toLowerCase();
+    const isFirefox = ua.includes('firefox');
+    const isSafari =
+      ua.includes('safari') && !ua.includes('chrome') && !ua.includes('android');
+    const isChromium =
+      ua.includes('chrome') || ua.includes('chromium') || ua.includes('edg');
+    const isLinux = ua.includes('linux');
+    const isMac = ua.includes('macintosh') || ua.includes('mac os');
+    const isWindows = ua.includes('windows');
+
+    setBrowser({
+      isChromium,
+      isSafari,
+      isFirefox,
+      isLinux,
+      isMac,
+      isWindows,
+    });
+
+    // Check standalone mode
     const isStandalone =
       window.matchMedia('(display-mode: standalone)').matches ||
       (window.navigator as unknown as { standalone?: boolean }).standalone ===
         true;
 
     if (isStandalone) {
-      setIsInstalled(true);
+      setStatus('installed');
       return;
+    }
+
+    if (isFirefox) {
+      setStatus('unsupported');
     }
 
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setIsInstallable(true);
+      setStatus('available');
     };
 
     window.addEventListener('beforeinstallprompt', handler);
 
-    window.addEventListener('appinstalled', () => {
-      setIsInstalled(true);
-      setIsInstallable(false);
+    const appInstalledHandler = () => {
+      setStatus('installed');
       setDeferredPrompt(null);
-    });
+    };
 
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', appInstalledHandler);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener('appinstalled', appInstalledHandler);
+    };
   }, []);
 
   const triggerInstall = useCallback(async () => {
     if (deferredPrompt) {
+      setStatus('installing');
       await deferredPrompt.prompt();
       const choice = await deferredPrompt.userChoice;
       if (choice.outcome === 'accepted') {
-        setIsInstalled(true);
-        setIsInstallable(false);
+        setStatus('installed');
+      } else {
+        setStatus('available');
       }
       setDeferredPrompt(null);
     } else {
-      // Browser doesn't support automatic prompt or manual trigger required
       setIsDialogOpen(true);
     }
   }, [deferredPrompt]);
 
   return {
-    isInstalled,
-    isInstallable,
+    status,
+    isInstalled: status === 'installed',
+    isInstallable: status === 'available' || !!deferredPrompt,
     isDialogOpen,
     setIsDialogOpen,
     triggerInstall,
+    browser,
   };
 }

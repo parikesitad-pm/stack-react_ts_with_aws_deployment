@@ -4,11 +4,13 @@ import type { Attachment } from '~/features/attachments/types/attachment.types';
 import type { StackManifest } from '../types/migration.types';
 
 function sanitizeFilename(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '') || 'untitled';
+  return (
+    title
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '') || 'untitled'
+  );
 }
 
 function triggerDownload(blob: Blob, filename: string) {
@@ -25,7 +27,9 @@ function triggerDownload(blob: Blob, filename: string) {
 export const exportEngineService = {
   exportSingleMarkdown(note: Note): void {
     const filename = `${sanitizeFilename(note.title)}.md`;
-    const blob = new Blob([note.content], { type: 'text/markdown;charset=utf-8' });
+    const blob = new Blob([note.content], {
+      type: 'text/markdown;charset=utf-8',
+    });
     triggerDownload(blob, filename);
   },
 

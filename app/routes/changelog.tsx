@@ -10,7 +10,11 @@ export function meta() {
       content:
         'Full release history, changelog, and evolution of STACK Markdown application.',
     },
-    { tagName: 'link', rel: 'canonical', href: 'https://stack-13.vercel.app/changelog' },
+    {
+      tagName: 'link',
+      rel: 'canonical',
+      href: 'https://stack-13.vercel.app/changelog',
+    },
     { name: 'robots', content: 'index, follow' },
     { property: 'og:title', content: 'Changelog & Releases — STACK' },
     {

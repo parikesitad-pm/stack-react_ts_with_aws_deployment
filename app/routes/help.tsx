@@ -10,7 +10,11 @@ export function meta() {
       content:
         'Frequently asked questions, offline usage, and storage protocols for STACK.',
     },
-    { tagName: 'link', rel: 'canonical', href: 'https://stack-13.vercel.app/help' },
+    {
+      tagName: 'link',
+      rel: 'canonical',
+      href: 'https://stack-13.vercel.app/help',
+    },
     { name: 'robots', content: 'index, follow' },
     { property: 'og:title', content: 'Assistance & Protocols — STACK' },
     {

@@ -16,6 +16,7 @@ import { Button } from '~/components/atoms/Button';
 import { Badge } from '~/components/atoms/Badge';
 import { InstallStackButton } from '~/features/pwa/components/InstallStackButton';
 import { HeroTerminalTagline } from '~/features/landing/components/HeroTerminalTagline';
+import { useAuthSession } from '~/features/auth/hooks/useAuthSession';
 import {
   DEFAULT_LANDING_CONTENT,
   type LandingContent,
@@ -31,7 +32,10 @@ export function meta() {
     },
     { tagName: 'link', rel: 'canonical', href: 'https://stack-13.vercel.app/' },
     { name: 'robots', content: 'index, follow' },
-    { property: 'og:title', content: 'STACK — Markdown Notes Without the Noise' },
+    {
+      property: 'og:title',
+      content: 'STACK — Markdown Notes Without the Noise',
+    },
     {
       property: 'og:description',
       content:
@@ -44,7 +48,10 @@ export function meta() {
       content: 'https://stack-13.vercel.app/brand/stack-logo.webp',
     },
     { name: 'twitter:card', content: 'summary_large_image' },
-    { name: 'twitter:title', content: 'STACK — Markdown Notes Without the Noise' },
+    {
+      name: 'twitter:title',
+      content: 'STACK — Markdown Notes Without the Noise',
+    },
     {
       name: 'twitter:description',
       content:
@@ -63,7 +70,7 @@ export default function LandingPage() {
     const raw = localStorage.getItem('stack_custom_landing');
     if (raw) {
       try {
-        setContent((prev) => ({ ...prev, ...JSON.parse(raw) }));
+        setContent((prev: LandingContent) => ({ ...prev, ...JSON.parse(raw) }));
       } catch {
         // ignore invalid json
       }
@@ -80,6 +87,8 @@ export default function LandingPage() {
     return () =>
       window.removeEventListener('stack:update-landing', handleUpdate);
   }, []);
+
+  const { isAuthenticated } = useAuthSession();
 
   return (
     <div className="min-h-screen bg-stack-bg text-stack-bone flex flex-col selection:bg-stack-red-muted selection:text-stack-bone">
@@ -128,9 +137,9 @@ export default function LandingPage() {
             </p>
 
             <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
-              <Link to="/app">
+              <Link to={isAuthenticated ? '/app' : '/auth/register'}>
                 <Button variant="primary" size="lg" className="shadow-lg">
-                  <span>Open STACK</span>
+                  <span>{isAuthenticated ? 'Go to workspace' : 'Get started'}</span>
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>

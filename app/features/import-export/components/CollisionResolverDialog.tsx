@@ -6,7 +6,12 @@ import type { Note } from '~/features/notes/types/note.types';
 interface CollisionResolverDialogProps {
   isOpen: boolean;
   collisions: { candidate: ImportCandidate; existing: Note }[];
-  onResolve: (resolutions: { candidate: ImportCandidate; action: 'rename' | 'overwrite' | 'skip' }[]) => void;
+  onResolve: (
+    resolutions: {
+      candidate: ImportCandidate;
+      action: 'rename' | 'overwrite' | 'skip';
+    }[]
+  ) => void;
   onCancel: () => void;
 }
 
@@ -38,7 +43,8 @@ export function CollisionResolverDialog({
               Filename Collision Detected
             </h3>
             <p className="text-[11px] text-stack-steel">
-              {collisions.length} imported note(s) share titles with existing documents.
+              {collisions.length} imported note(s) share titles with existing
+              documents.
             </p>
           </div>
         </div>
@@ -60,7 +66,8 @@ export function CollisionResolverDialog({
         </div>
 
         <p className="text-xs text-stack-silver leading-relaxed">
-          STACK will never silently overwrite your documents. Choose how to handle duplicate notes:
+          STACK will never silently overwrite your documents. Choose how to
+          handle duplicate notes:
         </p>
 
         <div className="flex flex-col sm:flex-row gap-2 pt-2">

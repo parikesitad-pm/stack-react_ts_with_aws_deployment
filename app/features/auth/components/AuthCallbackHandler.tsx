@@ -19,7 +19,14 @@ export function AuthCallbackHandler() {
     }, 700);
 
     const t3 = setTimeout(() => {
-      navigate('/app', { replace: true });
+      const redirectUrl =
+        (typeof window !== 'undefined' &&
+          sessionStorage.getItem('stack_redirect_after_login')) ||
+        '/app';
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('stack_redirect_after_login');
+      }
+      navigate(redirectUrl, { replace: true });
     }, 1100);
 
     return () => {

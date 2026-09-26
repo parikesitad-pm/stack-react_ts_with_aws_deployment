@@ -17,7 +17,10 @@ export const SUPPORTED_LANGUAGES = [
 export type SupportedLocale = (typeof SUPPORTED_LANGUAGES)[number]['code'];
 
 // Lazy bundle loader mapping
-const localeLoaders: Record<string, () => Promise<{ default: Record<string, unknown> }>> = {
+const localeLoaders: Record<
+  string,
+  () => Promise<{ default: Record<string, unknown> }>
+> = {
   id: () => import('../locales/id/common.json'),
   es: () => import('../locales/es/common.json'),
   fr: () => import('../locales/fr/common.json'),
@@ -67,7 +70,11 @@ if (!i18n.isInitialized) {
  * Change language and lazy-load bundle if not loaded yet
  */
 export async function changeAppLanguage(lang: SupportedLocale): Promise<void> {
-  if (lang !== 'en' && !i18n.hasResourceBundle(lang, 'common') && localeLoaders[lang]) {
+  if (
+    lang !== 'en' &&
+    !i18n.hasResourceBundle(lang, 'common') &&
+    localeLoaders[lang]
+  ) {
     const bundle = await localeLoaders[lang]();
     i18n.addResourceBundle(lang, 'common', bundle.default, true, true);
   }

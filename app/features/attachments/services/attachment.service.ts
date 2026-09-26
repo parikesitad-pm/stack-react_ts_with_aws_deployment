@@ -1,4 +1,5 @@
 import type { Attachment } from '../types/attachment.types';
+import { attachmentRepository } from './attachment.repository';
 
 export const attachmentService = {
   formatTimestamp(): string {
@@ -17,9 +18,12 @@ export const attachmentService = {
     const timestamp = this.formatTimestamp();
 
     if (isImage) {
-      const { dataUrl, size } = await this.optimizeImage(file);
+      const { blob, dataUrl, size } = await this.optimizeImage(file);
       const filename = `screenshot-${timestamp}.webp`;
       const localPath = `./assets/${filename}`;
+
+      // Persist binary Blob to IndexedDB repository
+      await attachmentRepository.saveAttachment(localPath, blob, 'image/webp');
 
       const attachment: Attachment = {
         id,
@@ -41,6 +45,13 @@ export const attachmentService = {
       const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
       const localPath = `./attachments/${cleanName}`;
 
+      // Persist binary Blob to IndexedDB repository
+      await attachmentRepository.saveAttachment(
+        localPath,
+        file,
+        file.type || 'application/octet-stream'
+      );
+
       const attachment: Attachment = {
         id,
         ownerSub,
@@ -58,16 +69,21 @@ export const attachmentService = {
     }
   },
 
-  async optimizeImage(file: File): Promise<{ dataUrl: string; size: number }> {
+  async optimizeImage(
+    file: File
+  ): Promise<{ blob: Blob; dataUrl: string; size: number }> {
     return new Promise((resolve) => {
-      // If smaller than 150 KB, don't recompress aggressively
+      // If smaller than 150 KB and already webp, don't recompress
       if (file.size < 150 * 1024 && file.type === 'image/webp') {
         const reader = new FileReader();
-        reader.onload = (e) =>
+        reader.onload = (e) => {
+          const dataUrl = e.target?.result as string;
           resolve({
-            dataUrl: e.target?.result as string,
+            blob: file,
+            dataUrl,
             size: file.size,
           });
+        };
         reader.readAsDataURL(file);
         return;
       }
@@ -95,15 +111,35 @@ export const attachmentService = {
           canvas.height = height;
           const ctx = canvas.getContext('2d');
           if (!ctx) {
-            resolve({ dataUrl: e.target?.result as string, size: file.size });
+            resolve({
+              blob: file,
+              dataUrl: e.target?.result as string,
+              size: file.size,
+            });
             return;
           }
 
           ctx.drawImage(img, 0, 0, width, height);
-          const webpDataUrl = canvas.toDataURL('image/webp', 0.82);
-          // Estimate byte size from base64
-          const estimatedSize = Math.round((webpDataUrl.length * 3) / 4);
-          resolve({ dataUrl: webpDataUrl, size: estimatedSize });
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                const webpDataUrl = canvas.toDataURL('image/webp', 0.82);
+                resolve({
+                  blob,
+                  dataUrl: webpDataUrl,
+                  size: blob.size,
+                });
+              } else {
+                resolve({
+                  blob: file,
+                  dataUrl: e.target?.result as string,
+                  size: file.size,
+                });
+              }
+            },
+            'image/webp',
+            0.82
+          );
         };
         img.src = e.target?.result as string;
       };

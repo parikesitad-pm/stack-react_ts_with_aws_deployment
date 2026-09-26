@@ -16,6 +16,9 @@ export default defineConfig({
       "~": path.resolve(__dirname, "./app"),
     },
   },
+  ssr: {
+    noExternal: [/@atlaskit/],
+  },
   server: {
     port: 5173,
     host: true,

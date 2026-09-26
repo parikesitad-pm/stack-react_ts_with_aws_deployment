@@ -1,6 +1,8 @@
-import { Link } from 'react-router';
+import { useEffect } from 'react';
+import { Link, useNavigate } from 'react-router';
 import { BrandLogo } from '~/components/atoms/BrandLogo';
 import { Auth0LoginForm } from '~/features/auth/components/Auth0LoginForm';
+import { useAuthSession } from '~/features/auth/hooks/useAuthSession';
 
 export function meta() {
   return [
@@ -10,6 +12,15 @@ export function meta() {
 }
 
 export default function AuthLoginPage() {
+  const { isAuthenticated } = useAuthSession();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/app', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
   return (
     <div className="min-h-screen bg-stack-bg text-stack-bone flex flex-col justify-center items-center p-4 sm:p-6 font-mono selection:bg-stack-red-muted selection:text-stack-bone">
       {/* Background industrial grid */}

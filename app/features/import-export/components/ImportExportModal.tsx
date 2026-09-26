@@ -22,7 +22,7 @@ import { CollisionResolverDialog } from './CollisionResolverDialog';
 interface ImportExportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  activeNote: Note;
+  activeNote: Note | null;
   allNotes: Note[];
   allAttachments: Attachment[];
   onImportNotes: (newNotes: Note[]) => void;
@@ -50,6 +50,7 @@ export function ImportExportModal({
   if (!isOpen) return null;
 
   const handleCopyMarkdown = async () => {
+    if (!activeNote) return;
     await exportEngineService.copyRawMarkdown(activeNote);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
@@ -100,11 +101,13 @@ export function ImportExportModal({
   };
 
   const applyImportedNotes = (candidates: ImportCandidate[]) => {
-    const newNotes: Note[] = candidates.map((cand) => ({
+    const newNotes: Note[] = candidates.map((cand, idx) => ({
       id: `imported-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       title: cand.title,
       content: cand.content,
       tags: cand.tags,
+      folderId: null,
+      order: idx,
       isPinned: false,
       isArchived: false,
       createdAt: 'Just now',
@@ -203,6 +206,11 @@ export function ImportExportModal({
         {/* Tab Content */}
         <div className="p-6 space-y-6 text-xs">
           {activeTab === 'note' && (
+            !activeNote ? (
+              <div className="py-6 text-center text-stack-steel text-xs font-mono">
+                No active note selected. Create or select a note to export.
+              </div>
+            ) : (
             <div className="space-y-4">
               <div className="space-y-1">
                 <h4 className="font-bold text-stack-bone">
@@ -273,6 +281,7 @@ export function ImportExportModal({
                 </Button>
               </div>
             </div>
+            )
           )}
 
           {activeTab === 'workspace' && (
