@@ -1,108 +1,127 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   User,
-  AtSign,
   Calendar,
-  Shield,
   ArrowRight,
   Check,
   AlertCircle,
   Loader2,
+  Globe,
 } from 'lucide-react';
 import { Button } from '~/components/atoms/Button';
 import { BrandLogo } from '~/components/atoms/BrandLogo';
-import { AuthService } from '~/features/auth/services/auth.service';
+import {
+  normalizeUsername,
+  usernameSchema,
+  type UserProfile,
+} from '../schemas/username.schema';
+import { IdentityService } from '../services/identity.service';
 
 interface OnboardingModalProps {
   isOpen: boolean;
-  initialEmail?: string;
-  onComplete: (
-    preferredName: string,
-    username: string,
-    dateOfBirth: string
-  ) => void;
+  sub: string;
+  email?: string;
+  isSocial?: boolean;
+  token?: string;
+  onComplete: (profile: UserProfile) => void;
 }
 
 export function OnboardingModal({
   isOpen,
-  initialEmail,
+  sub,
+  email,
+  isSocial = false,
+  token,
   onComplete,
 }: OnboardingModalProps) {
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
-  const [preferredName, setPreferredName] = useState('');
-  const [username, setUsername] = useState('');
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [rawInput, setRawInput] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
-  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [usernameSuggestions, setUsernameSuggestions] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
-  const handleNextStep1 = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanName = preferredName.trim();
-    if (!cleanName) {
-      setError('Please provide a preferred name or callsign.');
-      return;
-    }
-    setError(null);
-    // Derive initial advisory username suggestion
-    const suggested = AuthService.sanitizeUsername(cleanName) || 'operator';
-    setUsername(suggested);
-    setStep(2);
-  };
+  const normalized = normalizeUsername(rawInput);
 
-  const handleNextStep2 = async (e: React.FormEvent) => {
+  const handleStep1Submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanUser = AuthService.sanitizeUsername(username);
-    if (!cleanUser || cleanUser.length < 3) {
-      setError('Username must contain at least 3 alphanumeric characters.');
+    setError(null);
+    setUsernameSuggestions([]);
+
+    if (rawInput.includes(' ')) {
+      setError('Spaces are not allowed in usernames.');
       return;
     }
 
-    setIsCheckingUsername(true);
-    setError(null);
+    const validation = usernameSchema.safeParse(normalized);
+    if (!validation.success) {
+      setError(validation.error.issues[0]?.message || 'Invalid username.');
+      return;
+    }
 
+    setIsSubmitting(true);
     try {
-      const isAvailable =
-        await AuthService.checkUsernameAvailability(cleanUser);
-      if (!isAvailable) {
-        setError(`@${cleanUser} is taken.`);
-        setUsernameSuggestions(AuthService.suggestAlternatives(cleanUser));
-        setIsCheckingUsername(false);
+      const avail = await IdentityService.checkAvailability(normalized, token);
+      if (!avail.available) {
+        setError(`@${normalized} is already taken.`);
+        setUsernameSuggestions(
+          avail.suggestions || IdentityService.suggestAlternatives(normalized)
+        );
+        setIsSubmitting(false);
         return;
       }
-
-      setUsernameSuggestions([]);
-      setIsCheckingUsername(false);
-      setStep(3);
+      setIsSubmitting(false);
+      setStep(2);
     } catch {
-      setIsCheckingUsername(false);
-      setStep(3);
+      setIsSubmitting(false);
+      setStep(2);
     }
   };
 
-  const handleNextStep3 = (e: React.FormEvent) => {
+  const handleStep2Submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!dateOfBirth) {
       setError('Please provide your date of birth.');
       return;
     }
-    setError(null);
-    setStep(4);
 
-    // After brief welcome confirmation, trigger completion
-    setTimeout(() => {
-      onComplete(
-        preferredName.trim(),
-        username.replace(/^@+/, '').toLowerCase(),
-        dateOfBirth
+    setError(null);
+    setIsSubmitting(true);
+
+    try {
+      // Atomic claim with server / DynamoDB conditional write
+      const profile = await IdentityService.claimOnboarding(
+        sub,
+        {
+          username: normalized,
+          dateOfBirth,
+        },
+        email,
+        token
       );
-    }, 1200);
+
+      setStep(3);
+      setTimeout(() => {
+        onComplete(profile);
+      }, 900);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Claim failed';
+      if (msg === 'USERNAME_TAKEN') {
+        setError(`That username is already taken.`);
+        setUsernameSuggestions(IdentityService.suggestAlternatives(normalized));
+        setStep(1);
+      } else {
+        setError(msg);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stack-bg/85 backdrop-blur-sm font-mono text-stack-bone animate-fade-in select-none">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stack-bg/90 backdrop-blur-sm font-mono text-stack-bone animate-fade-in select-none">
       <div className="w-full max-w-md border border-stack-metal bg-stack-surface p-6 sm:p-8 rounded-lg shadow-2xl space-y-6">
         {/* Brand header */}
         <div className="flex items-center gap-3 border-b border-stack-metal/60 pb-4">
@@ -117,127 +136,111 @@ export function OnboardingModal({
           </div>
         </div>
 
-        {/* Step 1: Preferred Name */}
+        {/* Step 1: What should I call you? */}
         {step === 1 && (
-          <form onSubmit={handleNextStep1} className="space-y-4">
+          <form onSubmit={handleStep1Submit} className="space-y-4">
             <div className="space-y-1">
               <span className="text-[11px] text-stack-red-hover font-bold">
-                STEP 01 OF 03
+                STEP 01 OF 02
               </span>
               <h3 className="text-sm font-bold text-stack-bone">
-                What should STACK call you?
+                What should I call you?
               </h3>
               <p className="text-xs text-stack-steel leading-relaxed">
-                Your preferred display name inside the workspace and notes.
+                {isSocial ? (
+                  <>
+                    This will become your STACK username and profile handle.
+                    You'll continue signing in with your connected provider.
+                  </>
+                ) : (
+                  <>
+                    This will also become your STACK username:{' '}
+                    <span className="text-stack-silver font-semibold">
+                      @{normalized || 'username'}
+                    </span>
+                    . You can use it to sign in to STACK.
+                  </>
+                )}
               </p>
             </div>
 
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stack-steel" />
-              <input
-                type="text"
-                autoFocus
-                value={preferredName}
-                onChange={(e) => setPreferredName(e.target.value)}
-                placeholder="e.g. Luca, Alex, Commander"
-                className="w-full pl-9 pr-3 py-2 bg-stack-surface-raised border border-stack-metal rounded text-xs text-stack-bone placeholder-stack-steel/50 focus:outline-none focus:border-stack-steel"
-              />
-            </div>
+            <div className="space-y-2">
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-stack-steel">
+                  @
+                </span>
+                <input
+                  type="text"
+                  autoFocus
+                  value={rawInput}
+                  onChange={(e) => {
+                    setRawInput(e.target.value);
+                    if (error) setError(null);
+                  }}
+                  placeholder="luca"
+                  maxLength={32}
+                  className="w-full pl-8 pr-3 py-2 bg-stack-surface-raised border border-stack-metal rounded text-xs text-stack-bone placeholder-stack-steel/50 focus:outline-none focus:border-stack-steel"
+                />
+              </div>
 
-            {error && <p className="text-xs text-stack-red-hover">{error}</p>}
-
-            <div className="flex justify-end pt-2">
-              <Button type="submit" variant="primary" size="md">
-                <span>Continue</span>
-                <ArrowRight className="w-3.5 h-3.5 ml-1" />
-              </Button>
-            </div>
-          </form>
-        )}
-
-        {/* Step 2: Unique Username */}
-        {step === 2 && (
-          <form onSubmit={handleNextStep2} className="space-y-4">
-            <div className="space-y-1">
-              <span className="text-[11px] text-stack-red-hover font-bold">
-                STEP 02 OF 03
-              </span>
-              <h3 className="text-sm font-bold text-stack-bone">
-                Your STACK username
-              </h3>
-              <p className="text-xs text-stack-steel leading-relaxed">
-                For email/password accounts, you can use this username to sign
-                in.
-              </p>
-            </div>
-
-            <div className="relative">
-              <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stack-steel" />
-              <input
-                type="text"
-                autoFocus
-                value={username}
-                onChange={(e) => {
-                  setUsername(e.target.value.replace(/^@+/, ''));
-                  setError(null);
-                }}
-                placeholder="username"
-                className="w-full pl-9 pr-3 py-2 bg-stack-surface-raised border border-stack-metal rounded text-xs text-stack-bone placeholder-stack-steel/50 focus:outline-none focus:border-stack-steel lowercase"
-              />
+              {normalized && (
+                <div className="flex items-center gap-1.5 text-[11px] text-stack-steel truncate">
+                  <Globe className="w-3.5 h-3.5 shrink-0" />
+                  <span>Public handle: </span>
+                  <span className="text-stack-silver truncate">
+                    https://stack-md.online/@{normalized}
+                  </span>
+                </div>
+              )}
             </div>
 
             {error && (
-              <div className="space-y-2">
-                <p className="text-xs text-stack-red-hover flex items-center gap-1.5">
-                  <AlertCircle className="w-3.5 h-3.5" />
-                  <span>{error}</span>
-                </p>
-                {usernameSuggestions.length > 0 && (
-                  <div className="text-[11px] text-stack-steel">
-                    <span>Available suggestions: </span>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {usernameSuggestions.map((sug) => (
-                        <button
-                          key={sug}
-                          type="button"
-                          onClick={() => {
-                            setUsername(sug.replace(/^@+/, ''));
-                            setError(null);
-                          }}
-                          className="px-2 py-0.5 rounded border border-stack-metal bg-stack-surface-raised text-stack-silver hover:text-stack-bone hover:border-stack-steel transition-colors"
-                        >
-                          {sug}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
+              <div className="flex items-center gap-2 p-2.5 rounded bg-stack-red-muted/20 border border-stack-red-slate/40 text-stack-bone text-xs">
+                <AlertCircle className="w-4 h-4 text-stack-red-hover shrink-0" />
+                <span>{error}</span>
               </div>
             )}
 
-            <div className="flex justify-between items-center pt-2">
-              <button
-                type="button"
-                onClick={() => setStep(1)}
-                className="text-xs text-stack-steel hover:text-stack-bone underline"
-              >
-                Back
-              </button>
+            {usernameSuggestions.length > 0 && (
+              <div className="space-y-1.5 pt-1">
+                <span className="text-[11px] text-stack-steel">
+                  Suggested alternatives:
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {usernameSuggestions.map((sug) => (
+                    <button
+                      key={sug}
+                      type="button"
+                      onClick={() => {
+                        setRawInput(sug);
+                        setError(null);
+                        setUsernameSuggestions([]);
+                      }}
+                      className="px-2 py-0.5 rounded border border-stack-metal bg-stack-surface-raised hover:border-stack-steel text-stack-silver hover:text-stack-bone text-[11px]"
+                    >
+                      @{sug}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end pt-2">
               <Button
                 type="submit"
                 variant="primary"
                 size="md"
-                disabled={isCheckingUsername}
+                disabled={isSubmitting || !rawInput.trim()}
               >
-                {isCheckingUsername ? (
+                {isSubmitting ? (
                   <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                    <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
                     <span>Checking availability…</span>
                   </>
                 ) : (
                   <>
-                    <span>Confirm Username</span>
-                    <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                    <span>Continue</span>
+                    <ArrowRight className="w-4 h-4 ml-1.5" />
                   </>
                 )}
               </Button>
@@ -245,18 +248,18 @@ export function OnboardingModal({
           </form>
         )}
 
-        {/* Step 3: Date of Birth */}
-        {step === 3 && (
-          <form onSubmit={handleNextStep3} className="space-y-4">
+        {/* Step 2: Date of Birth */}
+        {step === 2 && (
+          <form onSubmit={handleStep2Submit} className="space-y-4">
             <div className="space-y-1">
               <span className="text-[11px] text-stack-red-hover font-bold">
-                STEP 03 OF 03
+                STEP 02 OF 02
               </span>
               <h3 className="text-sm font-bold text-stack-bone">
                 When were you born?
               </h3>
               <p className="text-xs text-stack-steel leading-relaxed">
-                Used for your profile and future personalization.
+                This stays private and is used for your account profile.
               </p>
             </div>
 
@@ -267,48 +270,61 @@ export function OnboardingModal({
                 autoFocus
                 value={dateOfBirth}
                 onChange={(e) => setDateOfBirth(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 bg-stack-surface-raised border border-stack-metal rounded text-xs text-stack-bone focus:outline-none focus:border-stack-steel"
+                className="w-full pl-9 pr-3 py-2 bg-stack-surface-raised border border-stack-metal rounded text-xs text-stack-bone focus:outline-none focus:border-stack-steel [color-scheme:dark]"
               />
             </div>
 
-            <div className="flex items-start gap-2 p-2.5 rounded bg-stack-surface-raised border border-stack-metal/60 text-[10px] text-stack-steel">
-              <Shield className="w-3.5 h-3.5 text-stack-red-hover shrink-0 mt-0.5" />
-              <span>
-                Privacy Guarantee: Your date of birth is stored exclusively as
-                private profile metadata. It is never exposed publicly or
-                shared.
-              </span>
-            </div>
-
-            {error && <p className="text-xs text-stack-red-hover">{error}</p>}
+            {error && (
+              <div className="flex items-center gap-2 p-2.5 rounded bg-stack-red-muted/20 border border-stack-red-slate/40 text-stack-bone text-xs">
+                <AlertCircle className="w-4 h-4 text-stack-red-hover shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
 
             <div className="flex justify-between items-center pt-2">
-              <button
+              <Button
                 type="button"
-                onClick={() => setStep(2)}
-                className="text-xs text-stack-steel hover:text-stack-bone underline"
+                variant="secondary"
+                size="md"
+                disabled={isSubmitting}
+                onClick={() => setStep(1)}
               >
                 Back
-              </button>
-              <Button type="submit" variant="primary" size="md">
-                <span>Complete Setup</span>
-                <Check className="w-3.5 h-3.5 ml-1" />
+              </Button>
+
+              <Button
+                type="submit"
+                variant="primary"
+                size="md"
+                disabled={isSubmitting || !dateOfBirth}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
+                    <span>Claiming username…</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Complete setup</span>
+                    <ArrowRight className="w-4 h-4 ml-1.5" />
+                  </>
+                )}
               </Button>
             </div>
           </form>
         )}
 
-        {/* Step 4: Welcome Flash */}
-        {step === 4 && (
-          <div className="text-center py-6 space-y-3 animate-fade-in">
-            <div className="w-12 h-12 rounded-full border border-stack-red-slate/60 bg-stack-red-muted/30 flex items-center justify-center mx-auto text-stack-bone">
-              <Check className="w-6 h-6 text-stack-red-hover" />
+        {/* Step 3: Success Confirmation */}
+        {step === 3 && (
+          <div className="py-6 text-center space-y-3">
+            <div className="w-10 h-10 mx-auto rounded-full bg-stack-green/20 border border-stack-green/40 flex items-center justify-center text-stack-green">
+              <Check className="w-5 h-5" />
             </div>
-            <h3 className="text-base font-bold text-stack-bone">
-              Welcome to STACK, {preferredName}.
+            <h3 className="text-sm font-bold text-stack-bone">
+              Identity Initialized
             </h3>
-            <p className="text-xs text-stack-steel">
-              Registered handle: @{username.replace(/^@+/, '')} · Launching
+            <p className="text-xs text-stack-silver">
+              Welcome to STACK, @{normalized}. Initializing your clean
               workspace…
             </p>
           </div>

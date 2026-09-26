@@ -1,7 +1,7 @@
 {
   "name": "stack-modula",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "author": "parikesitad-pm",
   "license": "MIT",
@@ -12,7 +12,8 @@
   "scripts": {
     "dev": "react-router dev",
     "build": "react-router build",
-    "typecheck": "react-router typegen && tsc --noEmit"
+    "typecheck": "react-router typegen && tsc --noEmit",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@react-router/dev": "^8.4.0",
