@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, lazy, Suspense } from 'react';
 import { initialNotes } from '~/features/notes/data/mockNotes';
 import type { Note, NoteFilter } from '~/features/notes/types/note.types';
 import type { SyncState } from '~/components/atoms/StatusIndicator';
@@ -6,9 +6,14 @@ import type { EditorMode } from '~/components/molecules/EditorModeSwitcher';
 import { AppSidebar } from '~/components/organisms/AppSidebar';
 import { AppHeader } from '~/components/organisms/AppHeader';
 import { MarkdownPreview } from '~/features/editor/components/MarkdownPreview';
-import { CodeMirrorEditor } from '~/features/editor/components/CodeMirrorEditor';
 import { CommandPaletteModal } from '~/features/search/components/CommandPaletteModal';
 import { SettingsModal } from '~/features/settings/components/SettingsModal';
+
+const CodeMirrorEditor = lazy(() =>
+  import('~/features/editor/components/CodeMirrorEditor').then((m) => ({
+    default: m.CodeMirrorEditor,
+  }))
+);
 
 export default function AppPage() {
   const [notes, setNotes] = useState<Note[]>(initialNotes);
@@ -199,10 +204,18 @@ export default function AppPage() {
           {/* Write Mode */}
           {editorMode === 'write' && (
             <div className="flex-1 h-full overflow-hidden">
-              <CodeMirrorEditor
-                value={activeNote?.content || ''}
-                onChange={handleContentChange}
-              />
+              <Suspense
+                fallback={
+                  <div className="flex h-full w-full items-center justify-center font-mono text-xs text-stack-steel">
+                    Initializing Editor Engine...
+                  </div>
+                }
+              >
+                <CodeMirrorEditor
+                  value={activeNote?.content || ''}
+                  onChange={handleContentChange}
+                />
+              </Suspense>
             </div>
           )}
 
@@ -210,10 +223,18 @@ export default function AppPage() {
           {editorMode === 'split' && (
             <div className="flex-1 flex flex-col md:flex-row h-full overflow-hidden">
               <div className="flex-1 h-1/2 md:h-full border-b md:border-b-0 md:border-r border-stack-metal/70 overflow-hidden">
-                <CodeMirrorEditor
-                  value={activeNote?.content || ''}
-                  onChange={handleContentChange}
-                />
+                <Suspense
+                  fallback={
+                    <div className="flex h-full w-full items-center justify-center font-mono text-xs text-stack-steel">
+                      Initializing Editor Engine...
+                    </div>
+                  }
+                >
+                  <CodeMirrorEditor
+                    value={activeNote?.content || ''}
+                    onChange={handleContentChange}
+                  />
+                </Suspense>
               </div>
               <div className="flex-1 h-1/2 md:h-full overflow-y-auto bg-stack-surface/30">
                 <MarkdownPreview content={activeNote?.content || ''} />

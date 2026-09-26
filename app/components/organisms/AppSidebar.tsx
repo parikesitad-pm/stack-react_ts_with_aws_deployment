@@ -6,7 +6,7 @@ import {
   type SyncState,
 } from '~/components/atoms/StatusIndicator';
 import { SearchBar } from '~/components/molecules/SearchBar';
-import { NoteListItem } from '~/components/molecules/NoteListItem';
+import { NoteListItem } from '~/features/notes/components/NoteListItem';
 import type { Note, NoteFilter } from '~/features/notes/types/note.types';
 
 export interface AppSidebarProps {
