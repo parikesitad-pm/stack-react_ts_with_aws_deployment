@@ -105,19 +105,6 @@ class AttachmentResolverService {
   }
 
   /**
-   * Clears all cached object URLs and revokes them immediately.
-   * Invoked during user logout to ensure zero memory leakage.
-   */
-  clearAll(): void {
-    for (const entry of this.urlCache.values()) {
-      try {
-        URL.revokeObjectURL(entry.url);
-      } catch {}
-    }
-    this.urlCache.clear();
-  }
-
-  /**
    * Get active cache statistics (useful for diagnostics & tests).
    */
   getCacheStats(): { path: string; refCount: number }[] {

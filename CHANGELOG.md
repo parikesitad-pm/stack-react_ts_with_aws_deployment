@@ -5,32 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.4.0] - 2026-09-27
-
-### Added
-
-- Real production Auth0 integration via `@auth0/auth0-react` supporting Google, GitHub, and email/password Universal Login.
-- Email verification gate (`EmailVerificationGate`) blocking private workspace access until Auth0 reports `email_verified === true`.
-- First-run STACK identity onboarding (`"What should I call you?"`) with strict username normalization and availability checks.
-- Server-side atomic username claim contract using DynamoDB conditional write semantics (`attribute_not_exists(PK)`).
-- Hard per-user IndexedDB workspace partitioning (`stack_user_{hash(sub)}`) ensuring complete isolation of notes, folders, and attachments.
-- Auth-scoped TanStack Query cache keys (`[entity, sub]`) preventing cross-account query cache poisoning.
-- Comprehensive 10-step logout cleanup protocol (`logoutCleanupService`) that cancels queries, clears caches, closes IndexedDB connections, and revokes attachment URLs.
-- Automated test suite for username validation, atomic identity claims, auth redirects, and storage isolation.
-
-### Changed
-
-- Deprecated and eliminated production mock authentication service as a source of truth.
-- Scoped all active note selection, editor recovery, and tour completion state strictly per-user.
-- Updated public navigation and landing page hero CTA to display `Hi, @username` and `Workspace →` for authenticated users.
-- Updated `README.md` with current Auth0 architecture and local setup.
-
-### Fixed
-
-- Fixed critical release blocker where logging out of Account A and logging into Account B displayed Account A's private workspace and notes.
-- Fixed auth redirection to properly preserve intended deep links (`returnTo`) across login and callback cycles.
-- Fixed empty workspace state to start with 0 seeded demo notes for fresh users.
-
 ## [0.3.0] - 2026-09-27
 
 ### Added

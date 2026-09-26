@@ -52,7 +52,7 @@ export function ProfileModal({
 
   // Form states for profile & preferences
   const [preferredName, setPreferredName] = useState(
-    user?.preferredName || user?.username || 'Operator'
+    user?.preferredName || user?.name || 'Operator'
   );
   const [dateOfBirth, setDateOfBirth] = useState(user?.dateOfBirth || '');
   const [avatar, setAvatar] = useState(user?.picture || '');

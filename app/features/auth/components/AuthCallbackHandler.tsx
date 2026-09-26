@@ -1,25 +1,24 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { BrandLogo } from '~/components/atoms/BrandLogo';
 import { useAuthSession } from '../hooks/useAuthSession';
-import { AlertCircle } from 'lucide-react';
 
 export function AuthCallbackHandler() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { isAuthenticated, isLoading, user } = useAuthSession();
+  const { isAuthenticated, user, hasCompletedOnboarding } = useAuthSession();
   const [statusMessage, setStatusMessage] = useState('Verifying Auth0 token…');
 
-  const errorParam = searchParams.get('error');
-  const errorDescription = searchParams.get('error_description');
-
   useEffect(() => {
-    if (errorParam) {
-      return;
-    }
+    const t1 = setTimeout(() => {
+      setStatusMessage('Extracting authenticated claims (sub)…');
+    }, 300);
 
-    if (isAuthenticated) {
+    const t2 = setTimeout(() => {
       setStatusMessage('Setting up local workspace boundary…');
+    }, 700);
+
+    const t3 = setTimeout(() => {
       const redirectUrl =
         (typeof window !== 'undefined' &&
           sessionStorage.getItem('stack_redirect_after_login')) ||
@@ -28,35 +27,17 @@ export function AuthCallbackHandler() {
         sessionStorage.removeItem('stack_redirect_after_login');
       }
       navigate(redirectUrl, { replace: true });
-    } else if (!isLoading) {
-      setStatusMessage('Extracting authenticated claims…');
-    }
-  }, [isAuthenticated, isLoading, navigate, errorParam]);
+    }, 1100);
 
-  if (errorParam) {
-    return (
-      <div className="min-h-screen bg-stack-bg flex flex-col items-center justify-center p-4 font-mono text-stack-bone">
-        <div className="w-full max-w-sm border border-stack-metal bg-stack-surface p-8 rounded-lg shadow-2xl space-y-4 text-center">
-          <div className="flex justify-center">
-            <BrandLogo size="md" />
-          </div>
-          <div className="flex items-center justify-center gap-2 p-3 rounded bg-stack-red-muted/20 border border-stack-red-slate/40 text-xs">
-            <AlertCircle className="w-4 h-4 text-stack-red-hover shrink-0" />
-            <span>{errorDescription || 'Authentication failed. Please retry.'}</span>
-          </div>
-          <Link
-            to="/auth/login"
-            className="inline-block text-xs text-stack-silver hover:text-stack-bone underline decoration-stack-metal"
-          >
-            ← Return to sign in
-          </Link>
-        </div>
-      </div>
-    );
-  }
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-stack-bg flex flex-col items-center justify-center p-4 font-mono select-none">
+    <div className="min-h-screen bg-stack-bg flex flex-col items-center justify-center p-4 font-mono">
       <div className="w-full max-w-sm border border-stack-metal bg-stack-surface p-8 rounded-lg shadow-2xl space-y-6 text-center">
         <div className="flex justify-center">
           <BrandLogo size="lg" />

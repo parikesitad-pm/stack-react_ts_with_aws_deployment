@@ -145,7 +145,7 @@ export default function LandingPage() {
               <Link to={isAuthenticated ? '/app' : '/auth/register'}>
                 <Button variant="primary" size="lg" className="shadow-lg">
                   <span>
-                    {isAuthenticated ? 'Workspace' : 'Get started'}
+                    {isAuthenticated ? 'Go to workspace' : 'Get started'}
                   </span>
                   <ArrowRight className="h-4 w-4" />
                 </Button>
