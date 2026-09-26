@@ -129,8 +129,8 @@ export function AvatarEditor({
         <div className="space-y-0.5">
           <h4 className="text-xs font-bold text-stack-bone">Operator Avatar</h4>
           <p className="text-[11px] text-stack-steel leading-relaxed">
-            Drag & drop, paste clipboard screenshot, or select image. Auto-cropped
-            via native HTML5 Canvas to 512×512 WebP.
+            Drag & drop, paste clipboard screenshot, or select image.
+            Auto-cropped via native HTML5 Canvas to 512×512 WebP.
           </p>
         </div>
 

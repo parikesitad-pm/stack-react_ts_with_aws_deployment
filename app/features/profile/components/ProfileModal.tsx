@@ -20,6 +20,11 @@ import { useAuthSession } from '~/features/auth/hooks/useAuthSession';
 import { AvatarEditor } from './AvatarEditor';
 import { Button } from '~/components/atoms/Button';
 import { Badge } from '~/components/atoms/Badge';
+import {
+  SUPPORTED_LANGUAGES,
+  changeAppLanguage,
+  type SupportedLocale,
+} from '~/lib/i18n';
 
 export type ProfileTab =
   | 'profile'
@@ -62,13 +67,17 @@ export function ProfileModal({
 
   // Appearance
   const [theme, setTheme] = useState<'system' | 'dark' | 'light'>('dark');
-  const [density, setDensity] = useState<'compact' | 'comfortable'>('comfortable');
+  const [density, setDensity] = useState<'compact' | 'comfortable'>(
+    'comfortable'
+  );
   const [fontSize, setFontSize] = useState(14);
   const [lineHeight, setLineHeight] = useState('1.6');
   const [reducedMotion, setReducedMotion] = useState(false);
 
   // Editor
-  const [defaultEditorMode, setDefaultEditorMode] = useState<'write' | 'split' | 'read'>('split');
+  const [defaultEditorMode, setDefaultEditorMode] = useState<
+    'write' | 'split' | 'read'
+  >('split');
   const [wordWrap, setWordWrap] = useState(true);
   const [lineNumbers, setLineNumbers] = useState(true);
   const [autosave, setAutosave] = useState(true);
@@ -269,7 +278,8 @@ export function ProfileModal({
                     System Preferences
                   </h3>
                   <p className="text-stack-steel text-xs">
-                    Regional localization, deletion confirmations, and startup behavior.
+                    Regional localization, deletion confirmations, and startup
+                    behavior.
                   </p>
                 </div>
 
@@ -283,17 +293,26 @@ export function ProfileModal({
                     </div>
                     <select
                       value={language}
-                      onChange={(e) => setLanguage(e.target.value)}
-                      className="px-3 py-1.5 bg-stack-surface border border-stack-metal rounded text-stack-bone"
+                      onChange={(e) => {
+                        const newLang = e.target.value as SupportedLocale;
+                        setLanguage(newLang);
+                        changeAppLanguage(newLang);
+                      }}
+                      className="px-3 py-1.5 bg-stack-surface border border-stack-metal rounded text-stack-bone text-xs"
                     >
-                      <option value="en-US">English (US)</option>
-                      <option value="id-ID">Bahasa Indonesia</option>
+                      {SUPPORTED_LANGUAGES.map((l) => (
+                        <option key={l.code} value={l.code}>
+                          {l.nativeName} ({l.name})
+                        </option>
+                      ))}
                     </select>
                   </div>
 
                   <div className="flex items-center justify-between p-3 rounded border border-stack-metal bg-stack-surface-raised">
                     <div>
-                      <h4 className="font-bold text-stack-bone">Time & Date Format</h4>
+                      <h4 className="font-bold text-stack-bone">
+                        Time & Date Format
+                      </h4>
                       <p className="text-stack-steel text-[11px]">
                         Timestamps on note revisions
                       </p>
@@ -320,7 +339,9 @@ export function ProfileModal({
 
                   <div className="flex items-center justify-between p-3 rounded border border-stack-metal bg-stack-surface-raised">
                     <div>
-                      <h4 className="font-bold text-stack-bone">Confirm Note Deletion</h4>
+                      <h4 className="font-bold text-stack-bone">
+                        Confirm Note Deletion
+                      </h4>
                       <p className="text-stack-steel text-[11px]">
                         Prompt confirmation modal before removing documents
                       </p>
@@ -335,7 +356,9 @@ export function ProfileModal({
 
                   <div className="flex items-center justify-between p-3 rounded border border-stack-metal bg-stack-surface-raised">
                     <div>
-                      <h4 className="font-bold text-stack-bone">Open Last Note on Launch</h4>
+                      <h4 className="font-bold text-stack-bone">
+                        Open Last Note on Launch
+                      </h4>
                       <p className="text-stack-steel text-[11px]">
                         Restore previous workspace state upon cold start
                       </p>
@@ -390,7 +413,9 @@ export function ProfileModal({
 
                   <div className="flex items-center justify-between p-3 rounded border border-stack-metal bg-stack-surface-raised">
                     <div>
-                      <h4 className="font-bold text-stack-bone">Editor Font Size</h4>
+                      <h4 className="font-bold text-stack-bone">
+                        Editor Font Size
+                      </h4>
                       <p className="text-stack-steel text-[11px]">
                         JetBrains Mono base size: {fontSize}px
                       </p>
@@ -407,7 +432,9 @@ export function ProfileModal({
 
                   <div className="flex items-center justify-between p-3 rounded border border-stack-metal bg-stack-surface-raised">
                     <div>
-                      <h4 className="font-bold text-stack-bone">Reduced Motion</h4>
+                      <h4 className="font-bold text-stack-bone">
+                        Reduced Motion
+                      </h4>
                       <p className="text-stack-steel text-[11px]">
                         Disable CSS keyframes and transitions
                       </p>
@@ -438,7 +465,9 @@ export function ProfileModal({
                 <div className="space-y-4">
                   <div className="flex items-center justify-between p-3 rounded border border-stack-metal bg-stack-surface-raised">
                     <div>
-                      <h4 className="font-bold text-stack-bone">Default Editor View</h4>
+                      <h4 className="font-bold text-stack-bone">
+                        Default Editor View
+                      </h4>
                       <p className="text-stack-steel text-[11px]">
                         Initial workspace layout
                       </p>
@@ -477,7 +506,9 @@ export function ProfileModal({
 
                   <div className="flex items-center justify-between p-3 rounded border border-stack-metal bg-stack-surface-raised">
                     <div>
-                      <h4 className="font-bold text-stack-bone">Line Numbers</h4>
+                      <h4 className="font-bold text-stack-bone">
+                        Line Numbers
+                      </h4>
                       <p className="text-stack-steel text-[11px]">
                         Display gutter line counts
                       </p>
@@ -492,7 +523,9 @@ export function ProfileModal({
 
                   <div className="flex items-center justify-between p-3 rounded border border-stack-metal bg-stack-surface-raised">
                     <div>
-                      <h4 className="font-bold text-stack-bone">Autosave to IndexedDB</h4>
+                      <h4 className="font-bold text-stack-bone">
+                        Autosave to IndexedDB
+                      </h4>
                       <p className="text-stack-steel text-[11px]">
                         Commit every stroke to local memory immediately
                       </p>
@@ -526,7 +559,9 @@ export function ProfileModal({
                     <span className="text-[10px] text-stack-steel uppercase">
                       Local Notes
                     </span>
-                    <p className="text-lg font-bold text-stack-bone">3 Documents</p>
+                    <p className="text-lg font-bold text-stack-bone">
+                      3 Documents
+                    </p>
                   </div>
                   <div className="p-3 rounded border border-stack-metal bg-stack-surface-raised">
                     <span className="text-[10px] text-stack-steel uppercase">
@@ -538,18 +573,24 @@ export function ProfileModal({
                     <span className="text-[10px] text-stack-steel uppercase">
                       Sync Status
                     </span>
-                    <p className="text-lg font-bold text-stack-silver">Synced</p>
+                    <p className="text-lg font-bold text-stack-silver">
+                      Synced
+                    </p>
                   </div>
                   <div className="p-3 rounded border border-stack-metal bg-stack-surface-raised">
                     <span className="text-[10px] text-stack-steel uppercase">
                       Queue
                     </span>
-                    <p className="text-lg font-bold text-stack-bone">0 Pending</p>
+                    <p className="text-lg font-bold text-stack-bone">
+                      0 Pending
+                    </p>
                   </div>
                 </div>
 
                 <div className="space-y-2 pt-2">
-                  <h4 className="font-bold text-stack-bone">Portability Actions</h4>
+                  <h4 className="font-bold text-stack-bone">
+                    Portability Actions
+                  </h4>
                   <div className="flex flex-wrap gap-2">
                     <Button variant="secondary" size="sm">
                       <Download className="w-3.5 h-3.5" />
@@ -582,7 +623,9 @@ export function ProfileModal({
 
                 <div className="p-4 rounded border border-stack-metal bg-stack-bg space-y-3 font-mono text-[11px]">
                   <div className="flex justify-between border-b border-stack-metal/40 pb-2">
-                    <span className="text-stack-steel">Canonical Identity (sub):</span>
+                    <span className="text-stack-steel">
+                      Canonical Identity (sub):
+                    </span>
                     <span className="font-bold text-stack-bone">
                       {user?.sub || 'github|84912034'}
                     </span>

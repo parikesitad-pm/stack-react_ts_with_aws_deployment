@@ -1,7 +1,7 @@
 {
   "name": "stack-modula",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.1.0",
   "type": "module",
   "author": "parikesitad-pm",
   "license": "MIT",
@@ -13,6 +13,7 @@
   "devDependencies": {
     "@react-router/dev": "^8.4.0",
     "@tailwindcss/vite": "^4.3.3",
+    "@types/jszip": "^3.4.1",
     "@types/node": "^26.6.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
@@ -31,11 +32,14 @@
     "@codemirror/view": "^6.43.13",
     "@tanstack/react-query": "^5.103.2",
     "aws-amplify": "^6.22.0",
+    "i18next": "^26.4.2",
     "isbot": "^5",
+    "jszip": "^3.10.2",
     "lucide-react": "^1.48.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-hook-form": "^7.88.0",
+    "react-i18next": "^17.0.15",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
     "zod": "^4.6.5"

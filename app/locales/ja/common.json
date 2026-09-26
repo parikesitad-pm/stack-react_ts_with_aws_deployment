@@ -1,0 +1,43 @@
+{
+  "brand": {
+    "title": "STACK",
+    "subtitle": "A Modula Project",
+    "tagline": "ノイズのないMarkdownノート。"
+  },
+  "nav": {
+    "docs": "ドキュメント",
+    "help": "ヘルプ",
+    "changelog": "更新履歴",
+    "launchApp": "STACKを開く",
+    "install": "STACKをインストール"
+  },
+  "hero": {
+    "badge": "STACK v0.2.0 · A Modula Project",
+    "headline": "MARKDOWN-FIRST.",
+    "subheadline": "LOCAL-FIRST BY DESIGN.",
+    "description": "Windows、Linux、macOS向けに設計された産業級ローカルファーストノートアプリ。プレーンなUTF-8 Markdownこそが唯一の真実です。"
+  },
+  "workspace": {
+    "notes": "ノート",
+    "newNote": "新規ドキュメント",
+    "search": "ノートを検索…",
+    "commandPalette": "コマンドパレット",
+    "settings": "設定",
+    "profile": "プロフィール",
+    "savedLocally": "ローカル保存済み",
+    "syncing": "同期中…",
+    "synced": "同期済み",
+    "offline": "オフラインモード",
+    "write": "編集",
+    "split": "分割",
+    "read": "プレビュー"
+  },
+  "actions": {
+    "save": "保存",
+    "cancel": "キャンセル",
+    "export": "エクスポート",
+    "import": "インポート",
+    "delete": "削除",
+    "close": "閉じる"
+  }
+}

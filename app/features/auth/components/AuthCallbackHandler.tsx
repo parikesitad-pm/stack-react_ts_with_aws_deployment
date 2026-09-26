@@ -42,7 +42,9 @@ export function AuthCallbackHandler() {
             <span>·</span>
             <span>CALLBACK</span>
           </div>
-          <h2 className="text-base font-bold text-stack-bone">{statusMessage}</h2>
+          <h2 className="text-base font-bold text-stack-bone">
+            {statusMessage}
+          </h2>
         </div>
 
         <div className="w-32 h-1 bg-stack-surface-raised mx-auto rounded-full overflow-hidden border border-stack-metal/60">

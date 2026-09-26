@@ -1,0 +1,43 @@
+{
+  "brand": {
+    "title": "STACK",
+    "subtitle": "A Modula Project",
+    "tagline": "Catatan Markdown tanpa distraksi."
+  },
+  "nav": {
+    "docs": "Dokumentasi",
+    "help": "Bantuan",
+    "changelog": "Catatan Rilis",
+    "launchApp": "Buka STACK",
+    "install": "Pasang STACK"
+  },
+  "hero": {
+    "badge": "STACK v0.2.0 · A Modula Project",
+    "headline": "MARKDOWN-FIRST.",
+    "subheadline": "LOKAL-FIRST SEJAK AWAL.",
+    "description": "Aplikasi catatan berkekuatan industri, berorientasi lokal untuk Windows, Linux, dan macOS. Markdown UTF-8 murni adalah kebenaran kanonikal."
+  },
+  "workspace": {
+    "notes": "Catatan",
+    "newNote": "Dokumen Baru",
+    "search": "Cari catatan…",
+    "commandPalette": "Palet Perintah",
+    "settings": "Pengaturan",
+    "profile": "Profil",
+    "savedLocally": "Tersimpan lokal",
+    "syncing": "Sinkronisasi…",
+    "synced": "Tersinkron",
+    "offline": "Mode luring",
+    "write": "Tulis",
+    "split": "Bagi Dua",
+    "read": "Baca"
+  },
+  "actions": {
+    "save": "Simpan",
+    "cancel": "Batal",
+    "export": "Ekspor",
+    "import": "Impor",
+    "delete": "Hapus",
+    "close": "Tutup"
+  }
+}

@@ -1,4 +1,12 @@
-import { Paperclip, Copy, Check, FileText, Image as ImageIcon, Download, X } from 'lucide-react';
+import {
+  Paperclip,
+  Copy,
+  Check,
+  FileText,
+  Image as ImageIcon,
+  Download,
+  X,
+} from 'lucide-react';
 import { useState } from 'react';
 import type { Attachment } from '../types/attachment.types';
 
@@ -58,7 +66,8 @@ export function AttachmentDrawer({
       <div className="p-3 max-h-40 overflow-y-auto space-y-2">
         {attachments.length === 0 ? (
           <p className="text-[11px] text-stack-steel text-center py-2">
-            No attachments for this document. Paste screenshot (`Ctrl+V`) or drag files directly into editor.
+            No attachments for this document. Paste screenshot (`Ctrl+V`) or
+            drag files directly into editor.
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">

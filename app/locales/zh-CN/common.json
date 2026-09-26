@@ -1,0 +1,43 @@
+{
+  "brand": {
+    "title": "STACK",
+    "subtitle": "A Modula Project",
+    "tagline": "纯粹专注的Markdown笔记。"
+  },
+  "nav": {
+    "docs": "文档",
+    "help": "帮助",
+    "changelog": "更新日志",
+    "launchApp": "打开 STACK",
+    "install": "安装 STACK"
+  },
+  "hero": {
+    "badge": "STACK v0.2.0 · A Modula Project",
+    "headline": "MARKDOWN-FIRST.",
+    "subheadline": "原生本地优先设计。",
+    "description": "专为Windows、Linux和macOS打造的工业级本地优先笔记引擎。纯正UTF-8 Markdown才是规范事实。"
+  },
+  "workspace": {
+    "notes": "笔记",
+    "newNote": "新建文档",
+    "search": "搜索笔记…",
+    "commandPalette": "命令面板",
+    "settings": "设置",
+    "profile": "个人资料",
+    "savedLocally": "已保存至本地",
+    "syncing": "同步中…",
+    "synced": "已同步",
+    "offline": "离线模式",
+    "write": "编辑",
+    "split": "分屏",
+    "read": "阅读"
+  },
+  "actions": {
+    "save": "保存",
+    "cancel": "取消",
+    "export": "导出",
+    "import": "导入",
+    "delete": "删除",
+    "close": "关闭"
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "brand": {
+    "title": "STACK",
+    "subtitle": "A Modula Project",
+    "tagline": "군더더기 없는 마크다운 노트."
+  },
+  "nav": {
+    "docs": "문서",
+    "help": "도움말",
+    "changelog": "변경 이력",
+    "launchApp": "STACK 열기",
+    "install": "STACK 설치"
+  },
+  "hero": {
+    "badge": "STACK v0.2.0 · A Modula Project",
+    "headline": "MARKDOWN-FIRST.",
+    "subheadline": "LOCAL-FIRST BY DESIGN.",
+    "description": "Windows, Linux, macOS용으로 설계된 산업용 로컬 우선 노트 앱. 순수한 UTF-8 마크다운이 표준입니다."
+  },
+  "workspace": {
+    "notes": "노트",
+    "newNote": "새 문서",
+    "search": "노트 검색…",
+    "commandPalette": "명령 팔레트",
+    "settings": "설정",
+    "profile": "프로필",
+    "savedLocally": "로컬 저장됨",
+    "syncing": "동기화 중…",
+    "synced": "동기화됨",
+    "offline": "오프라인 모드",
+    "write": "작성",
+    "split": "분할",
+    "read": "읽기"
+  },
+  "actions": {
+    "save": "저장",
+    "cancel": "취소",
+    "export": "내보내기",
+    "import": "가져오기",
+    "delete": "삭제",
+    "close": "닫기"
+  }
+}

@@ -58,9 +58,7 @@ export const attachmentService = {
     }
   },
 
-  async optimizeImage(
-    file: File
-  ): Promise<{ dataUrl: string; size: number }> {
+  async optimizeImage(file: File): Promise<{ dataUrl: string; size: number }> {
     return new Promise((resolve) => {
       // If smaller than 150 KB, don't recompress aggressively
       if (file.size < 150 * 1024 && file.type === 'image/webp') {

@@ -47,9 +47,10 @@ export function InstallInstructionsDialog({
                 <span>Google Chrome & Brave (Windows / Linux / macOS)</span>
               </h4>
               <p className="text-[11px] text-stack-steel">
-                Click the <strong>Install</strong> icon in the address bar (right
-                side, next to the star/bookmark icon) or open Menu (⋮) →{' '}
-                <strong>Save and share</strong> → <strong>Install STACK</strong>.
+                Click the <strong>Install</strong> icon in the address bar
+                (right side, next to the star/bookmark icon) or open Menu (⋮) →{' '}
+                <strong>Save and share</strong> → <strong>Install STACK</strong>
+                .
               </p>
             </div>
 
@@ -59,8 +60,9 @@ export function InstallInstructionsDialog({
                 <span>Microsoft Edge (Windows & Linux)</span>
               </h4>
               <p className="text-[11px] text-stack-steel">
-                Click the <strong>App available</strong> icon in the address bar or
-                Menu (…) → <strong>Apps</strong> → <strong>Install STACK</strong>.
+                Click the <strong>App available</strong> icon in the address bar
+                or Menu (…) → <strong>Apps</strong> →{' '}
+                <strong>Install STACK</strong>.
               </p>
             </div>
 

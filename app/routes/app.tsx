@@ -16,12 +16,22 @@ import { ProfileModal } from '~/features/profile/components/ProfileModal';
 import { AttachmentDrawer } from '~/features/attachments/components/AttachmentDrawer';
 import { attachmentService } from '~/features/attachments/services/attachment.service';
 import type { Attachment } from '~/features/attachments/types/attachment.types';
+import { DocumentOutline } from '~/features/editor/components/DocumentOutline';
+import { RecoveryDraftBanner } from '~/features/editor/components/RecoveryDraftBanner';
+import { ImportExportModal } from '~/features/import-export/components/ImportExportModal';
 
 const CodeMirrorEditor = lazy(() =>
   import('~/features/editor/components/CodeMirrorEditor').then((m) => ({
     default: m.CodeMirrorEditor,
   }))
 );
+
+export function meta() {
+  return [
+    { title: 'Workspace — STACK' },
+    { name: 'robots', content: 'noindex, nofollow' },
+  ];
+}
 
 export default function AppPage() {
   const navigate = useNavigate();
@@ -55,6 +65,12 @@ export default function AppPage() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isAttachmentDrawerOpen, setIsAttachmentDrawerOpen] = useState(false);
+  const [isOutlineOpen, setIsOutlineOpen] = useState(false);
+  const [isImportExportOpen, setIsImportExportOpen] = useState(false);
+  const [recoveryDraft, setRecoveryDraft] = useState<{
+    content: string;
+    timeDiffSeconds: number;
+  } | null>(null);
 
   // Attachments per note
   const [attachments, setAttachments] = useState<Record<string, Attachment[]>>({
@@ -83,9 +99,21 @@ export default function AppPage() {
     }
   }, [isAuthenticated, isAuthLoading, navigate]);
 
-  const activeNote = useMemo(() => {
+  const activeNote = useMemo((): Note => {
+    const found = notes.find((n) => n.id === activeNoteId) || notes[0];
+    if (found) return found;
     return (
-      notes.find((n) => n.id === activeNoteId) || notes[0] || initialNotes[0]
+      initialNotes[0] ?? {
+        id: 'fallback-note',
+        title: 'Untitled Note',
+        content: '# Untitled Note\n\nStart writing...',
+        tags: ['draft'],
+        isPinned: false,
+        isArchived: false,
+        createdAt: 'Just now',
+        updatedAt: 'Just now',
+        syncStatus: 'saved_locally',
+      }
     );
   }, [notes, activeNoteId]);
 
@@ -99,6 +127,33 @@ export default function AppPage() {
     const words = text.trim().length > 0 ? text.trim().split(/\s+/).length : 0;
     return { wordCount: words, charCount: text.length };
   }, [activeNote?.content]);
+
+  // Reading time at ~200 wpm
+  const readingTimeMinutes = useMemo(() => {
+    return Math.max(1, Math.ceil(wordCount / 200));
+  }, [wordCount]);
+
+  // Check for unsaved crash recovery draft for the active note
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem(`stack_draft_recovery_${activeNoteId}`);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { content: string; timestamp: number };
+        if (parsed.content && parsed.content !== activeNote?.content) {
+          const diffSec = Math.max(
+            1,
+            Math.round((Date.now() - parsed.timestamp) / 1000)
+          );
+          setRecoveryDraft({ content: parsed.content, timeDiffSeconds: diffSec });
+          return;
+        }
+      }
+    } catch {
+      // Ignore parse errors
+    }
+    setRecoveryDraft(null);
+  }, [activeNoteId, activeNote?.content]);
 
   // Global key bindings: Ctrl+K, Ctrl+N, Ctrl+1/2/3
   useEffect(() => {
@@ -131,6 +186,17 @@ export default function AppPage() {
   const handleContentChange = (newContent: string) => {
     setSyncState('syncing');
 
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(
+          `stack_draft_recovery_${activeNoteId}`,
+          JSON.stringify({ content: newContent, timestamp: Date.now() })
+        );
+      } catch {
+        // Ignore quota limitations
+      }
+    }
+
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
 
     setNotes((prevNotes) =>
@@ -143,7 +209,49 @@ export default function AppPage() {
 
     saveTimerRef.current = setTimeout(() => {
       setSyncState('saved_locally');
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(`stack_draft_recovery_${activeNoteId}`);
+      }
     }, 450);
+  };
+
+  const handleRestoreDraft = () => {
+    if (!recoveryDraft) return;
+    handleContentChange(recoveryDraft.content);
+    setRecoveryDraft(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(`stack_draft_recovery_${activeNoteId}`);
+    }
+  };
+
+  const handleDiscardDraft = () => {
+    setRecoveryDraft(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(`stack_draft_recovery_${activeNoteId}`);
+    }
+  };
+
+  const handleSelectHeading = (headingText: string) => {
+    const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    for (const el of headings) {
+      if (
+        el.textContent?.trim().toLowerCase().includes(headingText.trim().toLowerCase())
+      ) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        break;
+      }
+    }
+  };
+
+  const handleImportNotes = (newNotes: Note[]) => {
+    setNotes((prevNotes) => {
+      const importedIds = new Set(newNotes.map((n) => n.id));
+      const kept = prevNotes.filter((n) => !importedIds.has(n.id));
+      return [...newNotes, ...kept];
+    });
+    if (newNotes.length > 0 && newNotes[0]) {
+      setActiveNoteId(newNotes[0].id);
+    }
   };
 
   const handleTitleChange = (newTitle: string) => {
@@ -358,40 +466,34 @@ export default function AppPage() {
           onModeChange={setEditorMode}
           onToggleMobileSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
           onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
-          onToggleAttachments={() =>
-            setIsAttachmentDrawerOpen((prev) => !prev)
-          }
+          onToggleAttachments={() => setIsAttachmentDrawerOpen((prev) => !prev)}
+          onToggleOutline={() => setIsOutlineOpen((prev) => !prev)}
+          isOutlineOpen={isOutlineOpen}
+          onOpenImportExport={() => setIsImportExportOpen(true)}
           onOpenProfile={() => setIsProfileOpen(true)}
           attachmentCount={currentAttachments.length}
           syncState={syncState}
           wordCount={wordCount}
           charCount={charCount}
+          readingTimeMinutes={readingTimeMinutes}
         />
 
-        {/* Viewport Modes */}
-        <div className="flex flex-1 flex-col overflow-hidden relative">
-          {/* Write Mode: CodeMirror editor only */}
-          {editorMode === 'write' && (
-            <div className="flex-1 h-full overflow-hidden">
-              <Suspense
-                fallback={
-                  <div className="flex h-full w-full items-center justify-center font-mono text-xs text-stack-steel">
-                    Initializing Editor Engine...
-                  </div>
-                }
-              >
-                <CodeMirrorEditor
-                  value={activeNote?.content || ''}
-                  onChange={handleContentChange}
-                />
-              </Suspense>
-            </div>
-          )}
+        {/* Recovery Draft Alert Banner */}
+        {recoveryDraft && (
+          <RecoveryDraftBanner
+            isVisible={true}
+            timeDiffSeconds={recoveryDraft.timeDiffSeconds}
+            onRestore={handleRestoreDraft}
+            onDiscard={handleDiscardDraft}
+          />
+        )}
 
-          {/* Split Mode: CodeMirror on left, rendered preview on right */}
-          {editorMode === 'split' && (
-            <div className="flex-1 flex flex-col md:flex-row h-full overflow-hidden">
-              <div className="flex-1 h-1/2 md:h-full border-b md:border-b-0 md:border-r border-stack-metal/70 overflow-hidden">
+        {/* Viewport Modes */}
+        <div className="flex flex-1 overflow-hidden relative">
+          <div className="flex flex-1 flex-col overflow-hidden relative">
+            {/* Write Mode: CodeMirror editor only */}
+            {editorMode === 'write' && (
+              <div className="flex-1 h-full overflow-hidden">
                 <Suspense
                   fallback={
                     <div className="flex h-full w-full items-center justify-center font-mono text-xs text-stack-steel">
@@ -405,27 +507,55 @@ export default function AppPage() {
                   />
                 </Suspense>
               </div>
-              <div className="flex-1 h-1/2 md:h-full overflow-y-auto bg-stack-surface/30">
-                <MarkdownPreview content={activeNote?.content || ''} />
-              </div>
-            </div>
-          )}
+            )}
 
-          {/* Read Mode: Formatted Preview only */}
-          {editorMode === 'read' && (
-            <div className="flex-1 h-full overflow-y-auto bg-stack-surface/20">
-              <div className="mx-auto max-w-4xl py-6">
-                <MarkdownPreview content={activeNote?.content || ''} />
+            {/* Split Mode: CodeMirror on left, rendered preview on right */}
+            {editorMode === 'split' && (
+              <div className="flex-1 flex flex-col md:flex-row h-full overflow-hidden">
+                <div className="flex-1 h-1/2 md:h-full border-b md:border-b-0 md:border-r border-stack-metal/70 overflow-hidden">
+                  <Suspense
+                    fallback={
+                      <div className="flex h-full w-full items-center justify-center font-mono text-xs text-stack-steel">
+                        Initializing Editor Engine...
+                      </div>
+                    }
+                  >
+                    <CodeMirrorEditor
+                      value={activeNote?.content || ''}
+                      onChange={handleContentChange}
+                    />
+                  </Suspense>
+                </div>
+                <div className="flex-1 h-1/2 md:h-full overflow-y-auto bg-stack-surface/30">
+                  <MarkdownPreview content={activeNote?.content || ''} />
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Attachment Drawer */}
-          <AttachmentDrawer
-            isOpen={isAttachmentDrawerOpen}
-            onClose={() => setIsAttachmentDrawerOpen(false)}
-            attachments={currentAttachments}
-            onUploadClick={() => fileInputRef.current?.click()}
+            {/* Read Mode: Formatted Preview only */}
+            {editorMode === 'read' && (
+              <div className="flex-1 h-full overflow-y-auto bg-stack-surface/20">
+                <div className="mx-auto max-w-4xl py-6">
+                  <MarkdownPreview content={activeNote?.content || ''} />
+                </div>
+              </div>
+            )}
+
+            {/* Attachment Drawer */}
+            <AttachmentDrawer
+              isOpen={isAttachmentDrawerOpen}
+              onClose={() => setIsAttachmentDrawerOpen(false)}
+              attachments={currentAttachments}
+              onUploadClick={() => fileInputRef.current?.click()}
+            />
+          </div>
+
+          {/* Document Outline sidebar */}
+          <DocumentOutline
+            content={activeNote?.content || ''}
+            isOpen={isOutlineOpen}
+            onClose={() => setIsOutlineOpen(false)}
+            onSelectHeading={handleSelectHeading}
           />
         </div>
       </div>
@@ -450,6 +580,15 @@ export default function AppPage() {
       <ProfileModal
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
+      />
+
+      <ImportExportModal
+        isOpen={isImportExportOpen}
+        onClose={() => setIsImportExportOpen(false)}
+        activeNote={activeNote}
+        allNotes={notes}
+        allAttachments={Object.values(attachments).flat()}
+        onImportNotes={handleImportNotes}
       />
     </div>
   );

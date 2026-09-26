@@ -8,8 +8,6 @@ import {
   Laptop,
   Database,
   Lock,
-  CheckCircle2,
-  ChevronRight,
   Download,
 } from 'lucide-react';
 import { PublicNavbar } from '~/components/molecules/PublicNavbar';
@@ -17,10 +15,44 @@ import { PublicFooter } from '~/components/molecules/PublicFooter';
 import { Button } from '~/components/atoms/Button';
 import { Badge } from '~/components/atoms/Badge';
 import { InstallStackButton } from '~/features/pwa/components/InstallStackButton';
+import { HeroTerminalTagline } from '~/features/landing/components/HeroTerminalTagline';
 import {
   DEFAULT_LANDING_CONTENT,
   type LandingContent,
 } from '~/features/landing/config/landing.types';
+
+export function meta() {
+  return [
+    { title: 'STACK — Markdown Notes Without the Noise' },
+    {
+      name: 'description',
+      content:
+        'STACK is a local-first Markdown notes app for writing, organizing, and owning your notes. Installable as a desktop PWA.',
+    },
+    { tagName: 'link', rel: 'canonical', href: 'https://stack-13.vercel.app/' },
+    { name: 'robots', content: 'index, follow' },
+    { property: 'og:title', content: 'STACK — Markdown Notes Without the Noise' },
+    {
+      property: 'og:description',
+      content:
+        'STACK is a local-first Markdown notes app for writing, organizing, and owning your notes. Installable as a desktop PWA.',
+    },
+    { property: 'og:type', content: 'website' },
+    { property: 'og:url', content: 'https://stack-13.vercel.app/' },
+    {
+      property: 'og:image',
+      content: 'https://stack-13.vercel.app/brand/stack-logo.webp',
+    },
+    { name: 'twitter:card', content: 'summary_large_image' },
+    { name: 'twitter:title', content: 'STACK — Markdown Notes Without the Noise' },
+    {
+      name: 'twitter:description',
+      content:
+        'STACK is a local-first Markdown notes app for writing, organizing, and owning your notes. Installable as a desktop PWA.',
+    },
+    { name: 'theme-color', content: '#090A0B' },
+  ];
+}
 
 export default function LandingPage() {
   const [content, setContent] = useState<LandingContent>(
@@ -51,6 +83,21 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-stack-bg text-stack-bone flex flex-col selection:bg-stack-red-muted selection:text-stack-bone">
+      {/* Schema.org Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'SoftwareApplication',
+            name: 'STACK',
+            applicationCategory: 'ProductivityApplication',
+            operatingSystem: 'Windows, Linux, macOS, Web',
+            description: 'Markdown notes without the noise.',
+          }),
+        }}
+      />
+
       <PublicNavbar />
 
       <main className="flex-1">
@@ -70,6 +117,11 @@ export default function LandingPage() {
               {content.headline} <br />
               <span className="text-stack-steel">{content.subheadline}</span>
             </h1>
+
+            {/* One-Shot Terminal Reveal Tagline */}
+            <div className="pt-1">
+              <HeroTerminalTagline />
+            </div>
 
             <p className="mx-auto max-w-2xl font-mono text-sm sm:text-base text-stack-silver leading-relaxed">
               {content.description}
@@ -169,6 +221,23 @@ export default function LandingPage() {
                 </p>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* Manifesto Block */}
+        <section className="py-14 sm:py-18 border-b border-stack-metal/70 bg-stack-bg px-4 sm:px-6">
+          <div className="mx-auto max-w-3xl text-center space-y-4">
+            <h2 className="font-mono text-xl sm:text-2xl font-extrabold tracking-tight text-stack-bone">
+              MARKDOWN WITHOUT THE NOISE
+            </h2>
+            <div className="space-y-1.5 font-mono text-xs sm:text-sm text-stack-steel leading-relaxed">
+              <p>No proprietary blocks.</p>
+              <p>No hidden document format.</p>
+              <p>No database-shaped writing.</p>
+            </div>
+            <p className="font-mono text-sm sm:text-base font-bold text-stack-silver pt-2">
+              Just Markdown, with a workspace built around it.
+            </p>
           </div>
         </section>
 

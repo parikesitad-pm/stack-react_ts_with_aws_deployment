@@ -1,0 +1,43 @@
+{
+  "brand": {
+    "title": "STACK",
+    "subtitle": "A Modula Project",
+    "tagline": "Notes Markdown sans le bruit."
+  },
+  "nav": {
+    "docs": "Docs",
+    "help": "Aide",
+    "changelog": "Journal",
+    "launchApp": "Ouvrir STACK",
+    "install": "Installer STACK"
+  },
+  "hero": {
+    "badge": "STACK v0.2.0 · A Modula Project",
+    "headline": "MARKDOWN-FIRST.",
+    "subheadline": "LOCAL-FIRST PAR CONCEPTION.",
+    "description": "Une application de notes de qualité industrielle, axée sur le local pour Windows, Linux et macOS. Le Markdown UTF-8 pur est la vérité canonique."
+  },
+  "workspace": {
+    "notes": "Notes",
+    "newNote": "Nouveau Document",
+    "search": "Rechercher…",
+    "commandPalette": "Palette de Commandes",
+    "settings": "Paramètres",
+    "profile": "Profil",
+    "savedLocally": "Enregistré localement",
+    "syncing": "Synchronisation…",
+    "synced": "Synchronisé",
+    "offline": "Mode hors-ligne",
+    "write": "Écrire",
+    "split": "Scinder",
+    "read": "Lire"
+  },
+  "actions": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "export": "Exporter",
+    "import": "Importer",
+    "delete": "Supprimer",
+    "close": "Fermer"
+  }
+}

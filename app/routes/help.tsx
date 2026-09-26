@@ -2,6 +2,27 @@ import { PublicNavbar } from '~/components/molecules/PublicNavbar';
 import { PublicFooter } from '~/components/molecules/PublicFooter';
 import { Badge } from '~/components/atoms/Badge';
 
+export function meta() {
+  return [
+    { title: 'Assistance & Protocols — STACK' },
+    {
+      name: 'description',
+      content:
+        'Frequently asked questions, offline usage, and storage protocols for STACK.',
+    },
+    { tagName: 'link', rel: 'canonical', href: 'https://stack-13.vercel.app/help' },
+    { name: 'robots', content: 'index, follow' },
+    { property: 'og:title', content: 'Assistance & Protocols — STACK' },
+    {
+      property: 'og:description',
+      content:
+        'Frequently asked questions, offline usage, and storage protocols for STACK.',
+    },
+    { property: 'og:type', content: 'article' },
+    { property: 'og:url', content: 'https://stack-13.vercel.app/help' },
+  ];
+}
+
 export default function HelpPage() {
   const faqs = [
     {

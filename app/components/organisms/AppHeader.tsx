@@ -1,4 +1,14 @@
-import { Menu, Pin, Trash2, Command, Tag, Paperclip, User } from 'lucide-react';
+import {
+  Menu,
+  Pin,
+  Trash2,
+  Command,
+  Tag,
+  Paperclip,
+  User,
+  List,
+  ArrowDownUp,
+} from 'lucide-react';
 import {
   EditorModeSwitcher,
   type EditorMode,
@@ -20,11 +30,15 @@ export interface AppHeaderProps {
   onToggleMobileSidebar: () => void;
   onOpenCommandPalette: () => void;
   onToggleAttachments?: () => void;
+  onToggleOutline?: () => void;
+  isOutlineOpen?: boolean;
+  onOpenImportExport?: () => void;
   onOpenProfile?: () => void;
   attachmentCount?: number;
   syncState: SyncState;
   wordCount: number;
   charCount: number;
+  readingTimeMinutes?: number;
 }
 
 export function AppHeader({
@@ -39,11 +53,15 @@ export function AppHeader({
   onToggleMobileSidebar,
   onOpenCommandPalette,
   onToggleAttachments,
+  onToggleOutline,
+  isOutlineOpen = false,
+  onOpenImportExport,
   onOpenProfile,
   attachmentCount = 0,
   syncState,
   wordCount,
   charCount,
+  readingTimeMinutes,
 }: AppHeaderProps) {
   return (
     <header className="flex h-14 items-center justify-between border-b border-stack-metal/80 bg-stack-surface-raised px-4 select-none">
@@ -70,6 +88,12 @@ export function AppHeader({
             <span>{wordCount} words</span>
             <span>·</span>
             <span>{charCount} chars</span>
+            {readingTimeMinutes !== undefined && readingTimeMinutes > 0 ? (
+              <>
+                <span>·</span>
+                <span>{readingTimeMinutes} min read</span>
+              </>
+            ) : null}
           </div>
         </div>
       </div>
@@ -79,6 +103,20 @@ export function AppHeader({
         <EditorModeSwitcher mode={editorMode} onModeChange={onModeChange} />
 
         <div className="hidden sm:flex items-center gap-1 border-l border-stack-metal/60 pl-3">
+          {onToggleOutline && (
+            <button
+              onClick={onToggleOutline}
+              title={isOutlineOpen ? 'Close Outline' : 'Open Outline'}
+              className={`rounded p-1.5 transition-colors ${
+                isOutlineOpen
+                  ? 'bg-stack-red-muted/40 text-stack-red-hover border border-stack-red-slate/40'
+                  : 'text-stack-steel hover:text-stack-bone hover:bg-stack-metal'
+              }`}
+            >
+              <List className="h-3.5 w-3.5" />
+            </button>
+          )}
+
           <button
             onClick={onTogglePin}
             title={isPinned ? 'Unpin document' : 'Pin document'}
@@ -103,6 +141,16 @@ export function AppHeader({
               </span>
             ) : null}
           </button>
+
+          {onOpenImportExport && (
+            <button
+              onClick={onOpenImportExport}
+              title="Import / Export Vault & Notes"
+              className="rounded p-1.5 text-stack-steel hover:text-stack-bone hover:bg-stack-metal transition-colors"
+            >
+              <ArrowDownUp className="h-3.5 w-3.5" />
+            </button>
+          )}
 
           <button
             onClick={onDeleteNote}

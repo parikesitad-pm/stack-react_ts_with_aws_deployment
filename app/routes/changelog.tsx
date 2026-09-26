@@ -2,6 +2,27 @@ import { PublicNavbar } from '~/components/molecules/PublicNavbar';
 import { PublicFooter } from '~/components/molecules/PublicFooter';
 import { Badge } from '~/components/atoms/Badge';
 
+export function meta() {
+  return [
+    { title: 'Changelog & Releases — STACK' },
+    {
+      name: 'description',
+      content:
+        'Full release history, changelog, and evolution of STACK Markdown application.',
+    },
+    { tagName: 'link', rel: 'canonical', href: 'https://stack-13.vercel.app/changelog' },
+    { name: 'robots', content: 'index, follow' },
+    { property: 'og:title', content: 'Changelog & Releases — STACK' },
+    {
+      property: 'og:description',
+      content:
+        'Full release history, changelog, and evolution of STACK Markdown application.',
+    },
+    { property: 'og:type', content: 'article' },
+    { property: 'og:url', content: 'https://stack-13.vercel.app/changelog' },
+  ];
+}
+
 export default function ChangelogPage() {
   return (
     <div className="min-h-screen bg-stack-bg text-stack-bone flex flex-col font-mono">

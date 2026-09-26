@@ -130,7 +130,8 @@ export function OnboardingModal({
               <Shield className="w-3.5 h-3.5 text-stack-red-hover shrink-0 mt-0.5" />
               <span>
                 Privacy Guarantee: Your date of birth is stored exclusively as
-                private profile metadata. It is never exposed publicly or shared.
+                private profile metadata. It is never exposed publicly or
+                shared.
               </span>
             </div>
 

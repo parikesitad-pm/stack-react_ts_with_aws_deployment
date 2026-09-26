@@ -1,12 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BrandLogo } from '~/components/atoms/BrandLogo';
 
-export type StartupStage =
-  | 'boot'
-  | 'storage'
-  | 'engine'
-  | 'indexing'
-  | 'ready';
+export type StartupStage = 'boot' | 'storage' | 'engine' | 'indexing' | 'ready';
 
 interface StartupLoaderProps {
   onReady?: () => void;

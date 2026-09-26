@@ -94,7 +94,10 @@ export function Auth0LoginForm() {
       </div>
 
       {/* Email Form */}
-      <form onSubmit={handleEmailSubmit} className="space-y-3 font-mono text-xs">
+      <form
+        onSubmit={handleEmailSubmit}
+        className="space-y-3 font-mono text-xs"
+      >
         <div>
           <label className="block mb-1.5 font-bold text-stack-silver">
             Work or Personal Email
@@ -128,7 +131,8 @@ export function Auth0LoginForm() {
         <Shield className="w-3.5 h-3.5 text-stack-red-hover shrink-0 mt-0.5" />
         <span>
           Passwords are never processed or stored by STACK. All identity
-          authorizations redirect securely through Auth0 with JWT claim validation.
+          authorizations redirect securely through Auth0 with JWT claim
+          validation.
         </span>
       </div>
     </div>
