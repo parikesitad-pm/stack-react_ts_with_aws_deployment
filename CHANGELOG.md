@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Auth-scoped TanStack Query cache keys (`[entity, sub]`) preventing cross-account query cache poisoning.
 - Comprehensive 10-step logout cleanup protocol (`logoutCleanupService`) that cancels queries, clears caches, closes IndexedDB connections, and revokes attachment URLs.
 - Automated test suite for username validation, atomic identity claims, auth redirects, and storage isolation.
+- Standalone `react-devtools` support with zero-bundle-impact dev injection for non-Chrome developer workflows (Vivaldi, Brave, Zen Browser).
 
 ### Changed
 

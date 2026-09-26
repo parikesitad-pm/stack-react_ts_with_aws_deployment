@@ -82,7 +82,28 @@ pnpm test
 
 # Build production client
 pnpm run build
+
+# Start standalone React DevTools
+pnpm run devtools
 ```
+
+### Standalone React DevTools (Non-Extension Browsers)
+
+For developers using browsers where the standard Chrome/Firefox extension is unavailable, finicky, or unwanted (e.g. **Vivaldi**, **Brave** on Manjaro Linux, or **Zen Browser**), STACK integrates standalone `react-devtools`:
+
+1. In your first terminal, launch the standalone DevTools GUI:
+   ```bash
+   pnpm run devtools
+   ```
+2. In your second terminal, start the STACK development server:
+   ```bash
+   pnpm run dev
+   ```
+3. Open STACK in any browser (`http://localhost:5173`). The app connects automatically via the dev-only hook script (`http://localhost:8097`).
+
+> [!NOTE]
+> The DevTools connection script is guarded by `import.meta.env.DEV` in `app/root.tsx`. It is completely stripped out of production builds by Vite dead-code elimination (0 bytes and no network requests in production).
+
 
 ---
 
