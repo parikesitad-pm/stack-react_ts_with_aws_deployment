@@ -1,65 +1,80 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router';
+import { useSearchParams, Link } from 'react-router';
 import {
   Shield,
   ArrowRight,
-  User,
-  Lock,
+  Mail,
   AlertCircle,
   Loader2,
 } from 'lucide-react';
 import { Button } from '~/components/atoms/Button';
 import { useAuthSession } from '../hooks/useAuthSession';
 
-export function Auth0LoginForm() {
-  const navigate = useNavigate();
-  const { loginWithProvider } = useAuthSession();
-  const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+interface Auth0LoginFormProps {
+  mode?: 'login' | 'register';
+}
+
+export function Auth0LoginForm({ mode = 'login' }: Auth0LoginFormProps) {
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get('returnTo') || '/app';
+
+  const {
+    loginWithGoogle,
+    loginWithGitHub,
+    loginWithEmail,
+    signUp,
+    isLoading: isSessionLoading,
+  } = useAuthSession();
+
+  const [activeAction, setActiveAction] = useState<
+    'google' | 'github' | 'email' | 'signup' | null
+  >(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleProviderLogin = (provider: 'google-oauth2' | 'github') => {
-    if (isLoading) return;
-    setIsLoading(true);
+  const handleGoogle = async () => {
+    if (activeAction) return;
+    setActiveAction('google');
     setError(null);
     try {
-      loginWithProvider(provider);
-      navigate('/auth/callback?provider=' + provider);
+      await loginWithGoogle(returnTo);
     } catch {
-      setError('Authentication failed. Please retry.');
-      setIsLoading(false);
+      setError("We couldn't reach STACK. Try again.");
+      setActiveAction(null);
     }
   };
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isLoading) return;
-
-    if (!identifier.trim() || !password) {
-      setError('Incorrect username/email or password.');
-      return;
-    }
-
-    setIsLoading(true);
+  const handleGitHub = async () => {
+    if (activeAction) return;
+    setActiveAction('github');
     setError(null);
-
     try {
-      // Authenticate via Auth0 flow
-      loginWithProvider(
-        'email',
-        identifier.includes('@') ? identifier : undefined
-      );
-      navigate('/auth/callback?provider=database');
+      await loginWithGitHub(returnTo);
     } catch {
-      // Generic error: never disclose whether username/email exists
-      setError('Incorrect username/email or password.');
-      setIsLoading(false);
+      setError("We couldn't reach STACK. Try again.");
+      setActiveAction(null);
     }
   };
+
+  const handleEmailAuth = async () => {
+    if (activeAction) return;
+    setActiveAction(mode === 'register' ? 'signup' : 'email');
+    setError(null);
+    try {
+      if (mode === 'register') {
+        await signUp(returnTo);
+      } else {
+        await loginWithEmail(returnTo);
+      }
+    } catch {
+      setError("We couldn't reach STACK. Try again.");
+      setActiveAction(null);
+    }
+  };
+
+  const isBusy = Boolean(activeAction || isSessionLoading);
 
   return (
-    <div className="w-full space-y-5 font-mono text-xs">
+    <div className="w-full space-y-5 font-mono text-xs select-none">
       {error && (
         <div className="flex items-center gap-2 p-3 border rounded bg-stack-red-muted/30 border-stack-red-slate/40 text-stack-bone animate-fade-in">
           <AlertCircle className="w-4 h-4 text-stack-red-hover shrink-0" />
@@ -71,145 +86,145 @@ export function Auth0LoginForm() {
       <div className="space-y-2.5">
         <button
           type="button"
-          onClick={() => handleProviderLogin('google-oauth2')}
-          disabled={isLoading}
-          aria-busy={isLoading}
+          onClick={handleGoogle}
+          disabled={isBusy}
+          aria-busy={activeAction === 'google'}
           className="flex items-center justify-center w-full gap-3 px-4 py-2.5 font-semibold text-stack-bone transition-all bg-stack-surface-raised border border-stack-metal rounded hover:border-stack-steel hover:bg-stack-metal/60 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <svg className="w-4 h-4" viewBox="0 0 24 24">
-            <path
-              fill="#EA4335"
-              d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"
-            />
-            <path
-              fill="#4285F4"
-              d="M23.5 12.3c0-.8-.1-1.7-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"
-            />
-            <path
-              fill="#FBBC05"
-              d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.8s.2-2.1.4-2.8L1.9 6.3C.7 8.7 0 10.3 0 12s.7 3.3 1.9 5.7l3.7-2.9z"
-            />
-            <path
-              fill="#34A853"
-              d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16C3.7 19.7 7.5 23 12 23z"
-            />
-          </svg>
-          <span>Continue with Google</span>
+          {activeAction === 'google' ? (
+            <Loader2 className="w-4 h-4 animate-spin text-stack-bone" />
+          ) : (
+            <svg className="w-4 h-4" viewBox="0 0 24 24">
+              <path
+                fill="#EA4335"
+                d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"
+              />
+              <path
+                fill="#4285F4"
+                d="M23.5 12.3c0-.8-.1-1.7-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.8s.2-2.1.4-2.8L1.9 6.3C.7 8.7 0 10.3 0 12s.7 3.3 1.9 5.7l3.7-2.9z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16C3.7 19.7 7.5 23 12 23z"
+              />
+            </svg>
+          )}
+          <span>
+            {activeAction === 'google'
+              ? 'Connecting to Google…'
+              : 'Continue with Google'}
+          </span>
         </button>
 
         <button
           type="button"
-          onClick={() => handleProviderLogin('github')}
-          disabled={isLoading}
-          aria-busy={isLoading}
+          onClick={handleGitHub}
+          disabled={isBusy}
+          aria-busy={activeAction === 'github'}
           className="flex items-center justify-center w-full gap-3 px-4 py-2.5 font-semibold text-stack-bone transition-all bg-stack-surface-raised border border-stack-metal rounded hover:border-stack-steel hover:bg-stack-metal/60 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
-          </svg>
-          <span>Continue with GitHub</span>
+          {activeAction === 'github' ? (
+            <Loader2 className="w-4 h-4 animate-spin text-stack-bone" />
+          ) : (
+            <svg
+              className="w-4 h-4 fill-current text-stack-bone"
+              viewBox="0 0 24 24"
+            >
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
+              />
+            </svg>
+          )}
+          <span>
+            {activeAction === 'github'
+              ? 'Connecting to GitHub…'
+              : 'Continue with GitHub'}
+          </span>
         </button>
       </div>
 
-      <div className="relative flex items-center justify-center py-1">
-        <div className="w-full border-t border-stack-metal/60" />
-        <span className="absolute px-3 text-[10px] text-stack-steel uppercase bg-stack-surface">
-          or
+      {/* Industrial Divider */}
+      <div className="relative flex items-center justify-center">
+        <div className="border-t border-stack-metal/70 w-full" />
+        <span className="bg-stack-surface px-3 text-[10px] text-stack-steel uppercase tracking-widest absolute">
+          OR EMAIL AUTH
         </span>
       </div>
 
-      {/* Username or Email + Password Form */}
-      <form onSubmit={handleFormSubmit} className="space-y-3.5">
-        <div>
-          <label className="block mb-1 text-[11px] font-bold text-stack-silver">
-            Username or email
-          </label>
-          <div className="relative">
-            <User className="absolute w-4 h-4 -translate-y-1/2 left-3 top-1/2 text-stack-steel" />
-            <input
-              type="text"
-              autoComplete="username"
-              value={identifier}
-              onChange={(e) => {
-                setIdentifier(e.target.value);
-                setError(null);
-              }}
-              placeholder="you@example.com or @username"
-              className="w-full pl-9 pr-3 py-2 bg-stack-surface-raised border border-stack-metal rounded text-stack-bone placeholder-stack-steel/50 focus:outline-none focus:border-stack-steel transition-colors"
-            />
-          </div>
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="text-[11px] font-bold text-stack-silver">
-              Password
-            </label>
-            <Link
-              to="/auth/forgot-password"
-              className="text-[10px] text-stack-steel hover:text-stack-silver underline"
-            >
-              Forgot password?
-            </Link>
-          </div>
-          <div className="relative">
-            <Lock className="absolute w-4 h-4 -translate-y-1/2 left-3 top-1/2 text-stack-steel" />
-            <input
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                setError(null);
-              }}
-              placeholder="••••••••••••"
-              className="w-full pl-9 pr-3 py-2 bg-stack-surface-raised border border-stack-metal rounded text-stack-bone placeholder-stack-steel/50 focus:outline-none focus:border-stack-steel transition-colors"
-            />
-          </div>
-        </div>
-
+      {/* Email / Password Universal Login CTA */}
+      <div className="space-y-3 pt-1">
         <Button
-          type="submit"
+          type="button"
           variant="primary"
           size="md"
-          className="w-full justify-center mt-1"
-          disabled={isLoading}
-          aria-busy={isLoading}
+          onClick={handleEmailAuth}
+          disabled={isBusy}
+          className="w-full justify-center shadow-lg"
         >
-          {isLoading ? (
+          {activeAction === 'email' || activeAction === 'signup' ? (
             <>
-              <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
-              <span>Signing in…</span>
+              <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
+              <span>
+                {mode === 'register'
+                  ? 'Opening registration…'
+                  : 'Opening secure login…'}
+              </span>
             </>
           ) : (
             <>
-              <span>Sign in</span>
-              <ArrowRight className="w-3.5 h-3.5 ml-1" />
+              <Mail className="w-4 h-4 mr-1.5" />
+              <span>
+                {mode === 'register'
+                  ? 'Continue with Email'
+                  : 'Continue with Email & Password'}
+              </span>
+              <ArrowRight className="w-4 h-4 ml-1.5" />
             </>
           )}
         </Button>
-      </form>
 
-      {/* Switch to Register */}
-      <div className="text-center pt-2 border-t border-stack-metal/40">
-        <span className="text-stack-steel text-[11px]">
-          Don't have an account?{' '}
-        </span>
-        <Link
-          to="/auth/register"
-          className="text-[11px] text-stack-bone hover:underline font-bold"
-        >
-          Create an account
-        </Link>
+        <p className="text-[11px] text-stack-steel text-center leading-relaxed">
+          {mode === 'register' ? (
+            <>
+              Already have an account?{' '}
+              <Link
+                to="/auth/login"
+                className="text-stack-silver hover:text-stack-bone underline decoration-stack-metal"
+              >
+                Sign in
+              </Link>
+            </>
+          ) : (
+            <>
+              New to STACK?{' '}
+              <Link
+                to="/auth/register"
+                className="text-stack-silver hover:text-stack-bone underline decoration-stack-metal"
+              >
+                Create account
+              </Link>
+            </>
+          )}
+        </p>
       </div>
 
-      {/* Auth0 Trust Guarantee */}
-      <div className="pt-1 flex items-start gap-2 text-[10px] text-stack-steel leading-relaxed">
-        <Shield className="w-3.5 h-3.5 text-stack-red-hover shrink-0 mt-0.5" />
-        <span>
-          Passwords are never stored by STACK. All identity credentials
-          authorize through Auth0 protocols.
-        </span>
+      {/* Security notice */}
+      <div className="p-3 bg-stack-bg/80 border border-stack-metal/60 rounded text-[11px] text-stack-steel space-y-1">
+        <div className="flex items-center gap-1.5 text-stack-bone font-bold">
+          <Shield className="w-3.5 h-3.5 text-stack-red-hover" />
+          <span>Strict Security Contract</span>
+        </div>
+        <p>
+          STACK never stores or accesses your raw password. All identity and
+          tokens are brokered exclusively through Auth0 with PKCE and
+          cryptographic JWT verification.
+        </p>
       </div>
     </div>
   );

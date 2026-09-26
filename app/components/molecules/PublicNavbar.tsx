@@ -44,7 +44,7 @@ export function PublicNavbar() {
           {isAuthenticated ? (
             <div className="flex items-center gap-3">
               <span className="hidden sm:inline font-mono text-xs text-stack-silver">
-                Hi, {user?.preferredName || 'Operator'}
+                Hi, @{user?.username || 'operator'}
               </span>
               <Link
                 to="/app"
@@ -52,15 +52,6 @@ export function PublicNavbar() {
               >
                 <span>Workspace</span>
                 <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-              <Link
-                to="/app"
-                title="Account"
-                className="w-7 h-7 rounded-full bg-stack-metal flex items-center justify-center text-stack-bone font-mono text-xs border border-stack-steel/40"
-              >
-                {(user?.preferredName ||
-                  user?.email ||
-                  'U')[0]?.toUpperCase() || 'U'}
               </Link>
             </div>
           ) : (

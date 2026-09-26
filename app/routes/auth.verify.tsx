@@ -1,15 +1,35 @@
-import { VerifyEmailForm } from '~/features/auth/components/VerifyEmailForm';
-import { PublicNavbar } from '~/components/molecules/PublicNavbar';
-import { PublicFooter } from '~/components/molecules/PublicFooter';
+import { useNavigate, useSearchParams } from 'react-router';
+import { EmailVerificationGate } from '~/features/auth/components/EmailVerificationGate';
+import { useAuthSession } from '~/features/auth/hooks/useAuthSession';
+
+export function meta() {
+  return [
+    { title: 'Verify Email — STACK' },
+    { name: 'robots', content: 'noindex, nofollow' },
+  ];
+}
 
 export default function VerifyPage() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { user, checkEmailVerified, signOut } = useAuthSession();
+  const email = user?.email || searchParams.get('email') || '';
+
   return (
-    <div className="min-h-screen bg-stack-bg text-stack-bone flex flex-col font-mono">
-      <PublicNavbar />
-      <main className="flex-1 flex items-center justify-center p-4 sm:p-6">
-        <VerifyEmailForm />
-      </main>
-      <PublicFooter />
-    </div>
+    <EmailVerificationGate
+      email={email}
+      onRefreshSession={async () => {
+        const ok = await checkEmailVerified();
+        if (ok) {
+          navigate('/app', { replace: true });
+        }
+        return ok;
+      }}
+      onResendVerification={async () => {}}
+      onSignOut={() => {
+        signOut();
+        navigate('/auth/login', { replace: true });
+      }}
+    />
   );
 }
