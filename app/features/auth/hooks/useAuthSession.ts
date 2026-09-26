@@ -1,63 +1,69 @@
 import { useState, useEffect, useCallback } from 'react';
-import { AuthService } from '~/features/auth/services/auth.service';
-import type {
-  AuthUser,
-  AuthSessionState,
-} from '~/features/auth/types/auth.types';
-import type { LoginInput } from '~/features/auth/schemas/login.schema';
+import { auth0MockService } from '../services/auth0Mock.service';
+import type { Auth0User, Auth0Session } from '../types/auth0.types';
 
 export function useAuthSession() {
-  const [state, setState] = useState<AuthSessionState>({
-    isAuthenticated: false,
-    isLoading: true,
-    user: null,
-    error: null,
-  });
-
-  const checkSession = useCallback(async () => {
-    try {
-      const user = await AuthService.getCurrentSession();
-      setState({
-        isAuthenticated: Boolean(user),
-        isLoading: false,
-        user,
-        error: null,
-      });
-    } catch {
-      setState({
-        isAuthenticated: false,
-        isLoading: false,
-        user: null,
-        error: null,
-      });
-    }
-  }, []);
+  const [session, setSession] = useState<Auth0Session>(() =>
+    auth0MockService.getSession()
+  );
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    checkSession();
-  }, [checkSession]);
+    const handleAuthChange = (e: Event) => {
+      const customEvent = e as CustomEvent<Auth0Session>;
+      if (customEvent.detail) {
+        setSession(customEvent.detail);
+      }
+    };
 
-  const login = async (input: LoginInput) => {
-    setState((prev) => ({ ...prev, isLoading: true, error: null }));
-    try {
-      const user = await AuthService.login(input);
-      setState({
-        isAuthenticated: true,
-        isLoading: false,
-        user,
-        error: null,
-      });
-      return user;
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Authentication failed';
-      setState((prev) => ({ ...prev, isLoading: false, error: msg }));
-      throw err;
-    }
-  };
+    window.addEventListener('stack:auth-change', handleAuthChange);
+    return () =>
+      window.removeEventListener('stack:auth-change', handleAuthChange);
+  }, []);
+
+  const loginWithProvider = useCallback(
+    (
+      provider: 'google-oauth2' | 'github' | 'email',
+      email?: string
+    ): Auth0User => {
+      setIsLoading(true);
+      try {
+        const user = auth0MockService.loginWithProvider(provider, email);
+        return user;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
+  const completeOnboarding = useCallback(
+    (preferredName: string, dateOfBirth: string): Auth0User => {
+      return auth0MockService.completeOnboarding(preferredName, dateOfBirth);
+    },
+    []
+  );
+
+  const updateProfile = useCallback(
+    (partial: Partial<Auth0User>): Auth0User => {
+      return auth0MockService.updateProfile(partial);
+    },
+    []
+  );
+
+  const signOut = useCallback(() => {
+    auth0MockService.logout();
+  }, []);
 
   return {
-    ...state,
-    checkSession,
-    login,
+    isAuthenticated: session.isAuthenticated,
+    isLoading,
+    user: session.user,
+    token: session.token,
+    hasCompletedOnboarding: session.hasCompletedOnboarding,
+    loginWithProvider,
+    completeOnboarding,
+    updateProfile,
+    signOut,
   };
 }

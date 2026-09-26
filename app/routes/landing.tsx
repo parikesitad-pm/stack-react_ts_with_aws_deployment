@@ -10,19 +10,22 @@ import {
   Lock,
   CheckCircle2,
   ChevronRight,
+  Download,
 } from 'lucide-react';
 import { PublicNavbar } from '~/components/molecules/PublicNavbar';
 import { PublicFooter } from '~/components/molecules/PublicFooter';
 import { Button } from '~/components/atoms/Button';
 import { Badge } from '~/components/atoms/Badge';
+import { InstallStackButton } from '~/features/pwa/components/InstallStackButton';
 import {
   DEFAULT_LANDING_CONTENT,
   type LandingContent,
 } from '~/features/landing/config/landing.types';
 
 export default function LandingPage() {
-  const [content, setContent] =
-    useState<LandingContent>(DEFAULT_LANDING_CONTENT);
+  const [content, setContent] = useState<LandingContent>(
+    DEFAULT_LANDING_CONTENT
+  );
 
   useEffect(() => {
     const raw = localStorage.getItem('stack_custom_landing');
@@ -225,8 +228,44 @@ export default function LandingPage() {
               </div>
             </div>
 
+            {/* Desktop PWA Install Section */}
+            <div className="mt-16 pt-12 border-t border-stack-metal/70 text-center space-y-4">
+              <div className="inline-flex items-center gap-2 rounded-full border border-stack-metal bg-stack-surface px-3 py-1">
+                <Download className="h-3.5 w-3.5 text-stack-red-hover" />
+                <span className="font-mono text-xs text-stack-silver">
+                  STANDALONE PWA
+                </span>
+              </div>
+
+              <h3 className="font-mono text-2xl sm:text-3xl font-bold tracking-tight text-stack-bone">
+                STACK on your desktop
+              </h3>
+
+              <p className="mx-auto max-w-xl font-mono text-xs sm:text-sm text-stack-steel leading-relaxed">
+                Install STACK directly from your browser. No app store required,
+                zero background telemetry daemons, and instant launch with full
+                offline capabilities.
+              </p>
+
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-1 font-mono text-[11px]">
+                <span className="px-2.5 py-1 rounded border border-stack-metal bg-stack-surface text-stack-silver">
+                  Windows
+                </span>
+                <span className="px-2.5 py-1 rounded border border-stack-metal bg-stack-surface text-stack-silver">
+                  Linux (Debian / Arch / Fedora)
+                </span>
+                <span className="px-2.5 py-1 rounded border border-stack-metal bg-stack-surface text-stack-silver">
+                  macOS (Chromium / Safari Dock)
+                </span>
+              </div>
+
+              <div className="pt-2 flex justify-center">
+                <InstallStackButton size="lg" variant="primary" />
+              </div>
+            </div>
+
             {/* CTA Box */}
-            <div className="mt-16 rounded-lg border border-stack-metal bg-stack-surface-raised p-8 text-center sm:p-12 space-y-4">
+            <div className="mt-12 rounded-lg border border-stack-metal bg-stack-surface-raised p-8 text-center sm:p-12 space-y-4">
               <h3 className="font-mono text-2xl font-bold text-stack-bone">
                 Ready to take back your notes?
               </h3>

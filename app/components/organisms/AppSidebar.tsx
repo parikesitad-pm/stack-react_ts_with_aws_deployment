@@ -22,6 +22,7 @@ export interface AppSidebarProps {
   onFilterChange: (filter: NoteFilter) => void;
   user?: AuthUser | null;
   onSignOut?: () => void;
+  onOpenProfile?: () => void;
   className?: string;
 }
 
@@ -37,6 +38,7 @@ export function AppSidebar({
   onFilterChange,
   user,
   onSignOut,
+  onOpenProfile,
   className = '',
 }: AppSidebarProps) {
   // Extract unique tags
@@ -139,14 +141,18 @@ export function AppSidebar({
 
       {/* Operator and Logout bar */}
       <div className="flex items-center justify-between px-3 py-2 border-t border-stack-metal/60 bg-stack-surface font-mono text-[10px]">
-        <div className="flex flex-col truncate mr-2">
-          <span className="font-bold text-stack-bone truncate">
-            {user?.email || 'operator'}
+        <button
+          onClick={onOpenProfile}
+          title="Open Profile (/profile)"
+          className="flex flex-col truncate mr-2 text-left hover:opacity-80 transition-opacity group cursor-pointer"
+        >
+          <span className="font-bold text-stack-bone truncate group-hover:text-stack-silver">
+            {user?.preferredName || user?.email || 'operator'}
           </span>
           <span className="text-stack-steel truncate">
-            sub: {user?.sub || 'local'}
+            sub: {user?.sub ? user.sub.slice(0, 14) + '…' : 'local'}
           </span>
-        </div>
+        </button>
         {onSignOut && (
           <button
             onClick={onSignOut}

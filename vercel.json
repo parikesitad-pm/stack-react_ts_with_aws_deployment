@@ -7,6 +7,18 @@
     {
       "source": "/app/:path*",
       "destination": "/__spa-fallback.html"
+    },
+    {
+      "source": "/profile",
+      "destination": "/__spa-fallback.html"
+    },
+    {
+      "source": "/profile/:path*",
+      "destination": "/__spa-fallback.html"
+    },
+    {
+      "source": "/auth/:path*",
+      "destination": "/__spa-fallback.html"
     }
   ]
 }

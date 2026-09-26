@@ -10,7 +10,12 @@ import { MarkdownPreview } from '~/features/editor/components/MarkdownPreview';
 import { CommandPaletteModal } from '~/features/search/components/CommandPaletteModal';
 import { SettingsModal } from '~/features/settings/components/SettingsModal';
 import { useAuthSession } from '~/features/auth/hooks/useAuthSession';
-import { useSignOut } from '~/features/auth/hooks/useSignOut';
+import { StartupLoader } from '~/features/workspace/components/StartupLoader';
+import { OnboardingModal } from '~/features/profile/components/OnboardingModal';
+import { ProfileModal } from '~/features/profile/components/ProfileModal';
+import { AttachmentDrawer } from '~/features/attachments/components/AttachmentDrawer';
+import { attachmentService } from '~/features/attachments/services/attachment.service';
+import type { Attachment } from '~/features/attachments/types/attachment.types';
 
 const CodeMirrorEditor = lazy(() =>
   import('~/features/editor/components/CodeMirrorEditor').then((m) => ({
@@ -20,8 +25,25 @@ const CodeMirrorEditor = lazy(() =>
 
 export default function AppPage() {
   const navigate = useNavigate();
-  const { isAuthenticated, isLoading: isAuthLoading, user } = useAuthSession();
-  const { handleSignOut } = useSignOut();
+  const {
+    isAuthenticated,
+    isLoading: isAuthLoading,
+    user,
+    hasCompletedOnboarding,
+    completeOnboarding,
+    signOut,
+  } = useAuthSession();
+
+  // Cold start loader state (session-persisted so it only triggers on cold boot/reload)
+  const [isStartupLoading, setIsStartupLoading] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const hasBooted = sessionStorage.getItem('stack_app_cold_boot');
+    if (!hasBooted) {
+      sessionStorage.setItem('stack_app_cold_boot', 'true');
+      return true;
+    }
+    return false;
+  });
 
   const [notes, setNotes] = useState<Note[]>(initialNotes);
   const [activeNoteId, setActiveNoteId] = useState<string>('note-1');
@@ -30,9 +52,29 @@ export default function AppPage() {
   const [activeFilter, setActiveFilter] = useState<NoteFilter>('all');
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isAttachmentDrawerOpen, setIsAttachmentDrawerOpen] = useState(false);
+
+  // Attachments per note
+  const [attachments, setAttachments] = useState<Record<string, Attachment[]>>({
+    'note-1': [
+      {
+        id: 'att-sample-1',
+        ownerSub: user?.sub || 'isolated',
+        noteId: 'note-1',
+        name: 'screenshot-20260927-010212.webp',
+        mimeType: 'image/webp',
+        size: 84200,
+        localPath: './assets/screenshot-20260927-010212.webp',
+        createdAt: '2026-09-27T01:02:12.000Z',
+        syncStatus: 'synced',
+      },
+    ],
+  });
 
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Protected route guard
   useEffect(() => {
@@ -46,6 +88,10 @@ export default function AppPage() {
       notes.find((n) => n.id === activeNoteId) || notes[0] || initialNotes[0]
     );
   }, [notes, activeNoteId]);
+
+  const currentAttachments = useMemo(() => {
+    return attachments[activeNoteId] || [];
+  }, [attachments, activeNoteId]);
 
   // Compute word and char counts
   const { wordCount, charCount } = useMemo(() => {
@@ -122,62 +168,146 @@ export default function AppPage() {
     if (notes.length <= 1) return;
     const remaining = notes.filter((n) => n.id !== activeNoteId);
     setNotes(remaining);
-    setActiveNoteId(remaining[0]?.id || '');
+    if (remaining.length > 0 && remaining[0]) {
+      setActiveNoteId(remaining[0].id);
+    }
   };
 
   const handleCreateNote = () => {
     const newId = `note-${Date.now()}`;
     const newNote: Note = {
       id: newId,
-      title: 'New Note',
-      content: `# New Note\n\nBegin typing Markdown here...`,
+      title: 'Untitled Document',
+      content:
+        '# Untitled Document\n\nBegin typing Markdown here. Your keystrokes commit directly to local storage.\n',
+      createdAt: 'Just now',
+      updatedAt: 'Just now',
       tags: ['draft'],
       isPinned: false,
       isArchived: false,
-      createdAt: 'Just now',
-      updatedAt: 'Just now',
       syncStatus: 'saved_locally',
     };
-    setNotes((prev) => [newNote, ...prev]);
+    setNotes([newNote, ...notes]);
     setActiveNoteId(newId);
-    setEditorMode('write');
   };
 
-  if (isAuthLoading) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-stack-bg font-mono text-xs text-stack-steel">
-        Verifying Security Credentials...
-      </div>
-    );
-  }
+  // Image paste handler (Ctrl+V)
+  const handleEditorPaste = async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item && item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) {
+          e.preventDefault();
+          const { attachment, markdownSyntax } =
+            await attachmentService.processFile(
+              file,
+              activeNoteId,
+              user?.sub || 'isolated'
+            );
 
-  if (!isAuthenticated) {
-    return null;
-  }
+          setAttachments((prev) => ({
+            ...prev,
+            [activeNoteId]: [...(prev[activeNoteId] || []), attachment],
+          }));
+
+          const updatedContent =
+            (activeNote?.content || '') + '\n\n' + markdownSyntax + '\n';
+          handleContentChange(updatedContent);
+          setIsAttachmentDrawerOpen(true);
+          break;
+        }
+      }
+    }
+  };
+
+  // File upload handler
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (!file) continue;
+
+      const { attachment, markdownSyntax } =
+        await attachmentService.processFile(
+          file,
+          activeNoteId,
+          user?.sub || 'isolated'
+        );
+
+      setAttachments((prev) => ({
+        ...prev,
+        [activeNoteId]: [...(prev[activeNoteId] || []), attachment],
+      }));
+
+      const updatedContent =
+        (activeNote?.content || '') + '\n\n' + markdownSyntax + '\n';
+      handleContentChange(updatedContent);
+    }
+
+    setIsAttachmentDrawerOpen(true);
+    e.target.value = '';
+  };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-stack-bg font-sans text-stack-bone">
+    <div
+      onPaste={handleEditorPaste}
+      className="flex h-screen w-screen overflow-hidden bg-stack-bg text-stack-bone selection:bg-stack-red-muted selection:text-stack-bone"
+    >
+      {/* Hidden file input for manual attachments */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        onChange={handleFileUpload}
+        className="hidden"
+      />
+
+      {/* Startup Workspace Loader */}
+      {isStartupLoading && (
+        <StartupLoader onReady={() => setIsStartupLoading(false)} />
+      )}
+
+      {/* First-login Onboarding Modal */}
+      <OnboardingModal
+        isOpen={isAuthenticated && !hasCompletedOnboarding}
+        initialEmail={user?.email}
+        onComplete={(name, dob) => completeOnboarding(name, dob)}
+      />
+
       {/* Desktop Sidebar */}
-      <div className="hidden md:flex h-full shrink-0">
-        <AppSidebar
-          notes={notes}
-          activeNoteId={activeNoteId}
-          onSelectNote={setActiveNoteId}
-          onCreateNote={handleCreateNote}
-          onOpenSettings={() => setIsSettingsOpen(true)}
-          onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
-          syncState={syncState}
-          activeFilter={activeFilter}
-          onFilterChange={setActiveFilter}
-          user={user}
-          onSignOut={handleSignOut}
-        />
-      </div>
+      <AppSidebar
+        notes={notes}
+        activeNoteId={activeNoteId}
+        onSelectNote={setActiveNoteId}
+        onCreateNote={handleCreateNote}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenProfile={() => setIsProfileOpen(true)}
+        onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+        syncState={syncState}
+        activeFilter={activeFilter}
+        onFilterChange={setActiveFilter}
+        user={user}
+        onSignOut={() => {
+          signOut();
+          navigate('/auth/login', { replace: true });
+        }}
+        className="hidden md:flex"
+      />
 
       {/* Mobile Drawer Sidebar */}
       {isMobileSidebarOpen && (
-        <div className="fixed inset-0 z-50 flex md:hidden bg-black/80">
-          <div className="w-80 max-w-[85vw] h-full shadow-2xl">
+        <div
+          className="fixed inset-0 z-40 bg-stack-bg/80 backdrop-blur-sm md:hidden"
+          onClick={() => setIsMobileSidebarOpen(false)}
+        >
+          <div
+            className="w-72 h-full bg-stack-surface shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <AppSidebar
               notes={notes}
               activeNoteId={activeNoteId}
@@ -193,6 +323,10 @@ export default function AppPage() {
                 setIsSettingsOpen(true);
                 setIsMobileSidebarOpen(false);
               }}
+              onOpenProfile={() => {
+                setIsProfileOpen(true);
+                setIsMobileSidebarOpen(false);
+              }}
               onOpenCommandPalette={() => {
                 setIsCommandPaletteOpen(true);
                 setIsMobileSidebarOpen(false);
@@ -201,20 +335,20 @@ export default function AppPage() {
               activeFilter={activeFilter}
               onFilterChange={setActiveFilter}
               user={user}
-              onSignOut={handleSignOut}
+              onSignOut={() => {
+                signOut();
+                navigate('/auth/login', { replace: true });
+              }}
+              className="flex w-full h-full"
             />
           </div>
-          <div
-            className="flex-1"
-            onClick={() => setIsMobileSidebarOpen(false)}
-          />
         </div>
       )}
 
       {/* Main Workspace Area */}
-      <div className="flex flex-1 flex-col h-full overflow-hidden bg-stack-bg">
+      <div className="flex flex-1 flex-col overflow-hidden">
         <AppHeader
-          title={activeNote?.title || ''}
+          title={activeNote?.title || 'Untitled'}
           onTitleChange={handleTitleChange}
           tags={activeNote?.tags || []}
           isPinned={activeNote?.isPinned || false}
@@ -222,16 +356,21 @@ export default function AppPage() {
           onDeleteNote={handleDeleteNote}
           editorMode={editorMode}
           onModeChange={setEditorMode}
-          onToggleMobileSidebar={() => setIsMobileSidebarOpen(true)}
+          onToggleMobileSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
           onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+          onToggleAttachments={() =>
+            setIsAttachmentDrawerOpen((prev) => !prev)
+          }
+          onOpenProfile={() => setIsProfileOpen(true)}
+          attachmentCount={currentAttachments.length}
           syncState={syncState}
           wordCount={wordCount}
           charCount={charCount}
         />
 
-        {/* Workspace Body depending on mode */}
-        <div className="flex-1 flex overflow-hidden">
-          {/* Write Mode */}
+        {/* Viewport Modes */}
+        <div className="flex flex-1 flex-col overflow-hidden relative">
+          {/* Write Mode: CodeMirror editor only */}
           {editorMode === 'write' && (
             <div className="flex-1 h-full overflow-hidden">
               <Suspense
@@ -280,6 +419,14 @@ export default function AppPage() {
               </div>
             </div>
           )}
+
+          {/* Attachment Drawer */}
+          <AttachmentDrawer
+            isOpen={isAttachmentDrawerOpen}
+            onClose={() => setIsAttachmentDrawerOpen(false)}
+            attachments={currentAttachments}
+            onUploadClick={() => fileInputRef.current?.click()}
+          />
         </div>
       </div>
 
@@ -298,6 +445,11 @@ export default function AppPage() {
         onClose={() => setIsSettingsOpen(false)}
         noteCount={notes.length}
         user={user}
+      />
+
+      <ProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
       />
     </div>
   );

@@ -2,7 +2,13 @@ export interface AuthUser {
   sub: string;
   email: string;
   emailVerified: boolean;
-  username: string;
+  username?: string;
+  name?: string;
+  preferredName?: string;
+  dateOfBirth?: string;
+  picture?: string;
+  provider?: string;
+  createdAt?: string;
 }
 
 export interface AuthSessionState {

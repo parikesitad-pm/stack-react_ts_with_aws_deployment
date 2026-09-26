@@ -1,4 +1,4 @@
-import { Menu, Pin, Trash2, Command, Tag } from 'lucide-react';
+import { Menu, Pin, Trash2, Command, Tag, Paperclip, User } from 'lucide-react';
 import {
   EditorModeSwitcher,
   type EditorMode,
@@ -19,6 +19,9 @@ export interface AppHeaderProps {
   onModeChange: (mode: EditorMode) => void;
   onToggleMobileSidebar: () => void;
   onOpenCommandPalette: () => void;
+  onToggleAttachments?: () => void;
+  onOpenProfile?: () => void;
+  attachmentCount?: number;
   syncState: SyncState;
   wordCount: number;
   charCount: number;
@@ -35,6 +38,9 @@ export function AppHeader({
   onModeChange,
   onToggleMobileSidebar,
   onOpenCommandPalette,
+  onToggleAttachments,
+  onOpenProfile,
+  attachmentCount = 0,
   syncState,
   wordCount,
   charCount,
@@ -86,6 +92,19 @@ export function AppHeader({
           </button>
 
           <button
+            onClick={onToggleAttachments}
+            title="Note Attachments & Files"
+            className="relative rounded p-1.5 text-stack-steel hover:text-stack-bone hover:bg-stack-metal transition-colors"
+          >
+            <Paperclip className="h-3.5 w-3.5" />
+            {attachmentCount && attachmentCount > 0 ? (
+              <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-stack-red-slate text-[9px] font-bold text-stack-bone">
+                {attachmentCount}
+              </span>
+            ) : null}
+          </button>
+
+          <button
             onClick={onDeleteNote}
             title="Delete document"
             className="rounded p-1.5 text-stack-steel hover:text-stack-red-hover hover:bg-stack-metal transition-colors"
@@ -99,6 +118,14 @@ export function AppHeader({
             className="rounded p-1.5 text-stack-steel hover:text-stack-bone hover:bg-stack-metal transition-colors"
           >
             <Command className="h-3.5 w-3.5" />
+          </button>
+
+          <button
+            onClick={onOpenProfile}
+            title="Operator Profile (/profile)"
+            className="rounded p-1.5 text-stack-steel hover:text-stack-bone hover:bg-stack-metal transition-colors ml-1 border-l border-stack-metal/60 pl-2"
+          >
+            <User className="h-3.5 w-3.5 text-stack-silver" />
           </button>
         </div>
       </div>
