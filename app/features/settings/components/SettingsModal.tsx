@@ -12,16 +12,20 @@ import {
 import { Button } from '~/components/atoms/Button';
 import { Badge } from '~/components/atoms/Badge';
 
+import type { AuthUser } from '~/features/auth/types/auth.types';
+
 export interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   noteCount: number;
+  user?: AuthUser | null;
 }
 
 export function SettingsModal({
   isOpen,
   onClose,
   noteCount,
+  user,
 }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<
     'general' | 'storage' | 'sync' | 'about'
@@ -244,6 +248,20 @@ export function SettingsModal({
                         Cloud Transport Mode:
                       </span>
                       <Badge variant="accent">Disabled (Local First)</Badge>
+                    </div>
+                    <div className="pt-2 border-t border-stack-metal/40 space-y-1">
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-stack-steel">Cognito Sub Identity:</span>
+                        <span className="text-stack-bone font-mono">{user?.sub || "Anonymous"}</span>
+                      </div>
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-stack-steel">Account Identity:</span>
+                        <span className="text-stack-silver font-mono">{user?.email || "Local Demo"}</span>
+                      </div>
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-stack-steel">DynamoDB Partition:</span>
+                        <span className="text-stack-silver font-mono">USER#{user?.sub || "demo"}</span>
+                      </div>
                     </div>
                   </div>
                 </div>

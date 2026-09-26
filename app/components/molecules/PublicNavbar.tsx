@@ -40,6 +40,12 @@ export function PublicNavbar() {
 
         <div className="flex items-center gap-3">
           <Link
+            to="/auth/login"
+            className="hidden sm:inline-flex items-center px-3 py-1.5 font-mono text-xs text-stack-silver hover:text-stack-bone transition-colors"
+          >
+            Sign In
+          </Link>
+          <Link
             to="/app"
             className="inline-flex items-center gap-2 rounded border border-stack-red-muted bg-stack-red-slate px-3.5 py-1.5 font-mono text-xs font-medium text-stack-bone shadow-sm transition-all hover:bg-stack-red-hover"
           >
