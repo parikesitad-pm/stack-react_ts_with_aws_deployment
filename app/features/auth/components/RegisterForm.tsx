@@ -1,23 +1,23 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router";
-import { Lock, Mail, ArrowRight, Shield, AlertCircle } from "lucide-react";
-import { Button } from "~/components/atoms/Button";
-import { BrandLogo } from "~/components/atoms/BrandLogo";
-import { Badge } from "~/components/atoms/Badge";
-import { AuthService } from "~/features/auth/services/auth.service";
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router';
+import { Lock, Mail, ArrowRight, Shield, AlertCircle } from 'lucide-react';
+import { Button } from '~/components/atoms/Button';
+import { BrandLogo } from '~/components/atoms/BrandLogo';
+import { Badge } from '~/components/atoms/Badge';
+import { AuthService } from '~/features/auth/services/auth.service';
 
 export function RegisterForm() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
-      setError("Passphrases do not match");
+      setError('Passphrases do not match');
       return;
     }
 
@@ -28,7 +28,7 @@ export function RegisterForm() {
       await AuthService.register({ email, password, confirmPassword });
       navigate(`/auth/verify?email=${encodeURIComponent(email)}`);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Registration failed");
+      setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
       setIsLoading(false);
     }
@@ -115,7 +115,7 @@ export function RegisterForm() {
           disabled={isLoading}
           className="w-full justify-center mt-2"
         >
-          <span>{isLoading ? "Provisioning..." : "Submit Registration"}</span>
+          <span>{isLoading ? 'Provisioning...' : 'Submit Registration'}</span>
           <ArrowRight className="h-4 w-4" />
         </Button>
       </form>

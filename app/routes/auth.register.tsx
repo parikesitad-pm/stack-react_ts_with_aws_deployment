@@ -1,6 +1,6 @@
-import { RegisterForm } from "~/features/auth/components/RegisterForm";
-import { PublicNavbar } from "~/components/molecules/PublicNavbar";
-import { PublicFooter } from "~/components/molecules/PublicFooter";
+import { RegisterForm } from '~/features/auth/components/RegisterForm';
+import { PublicNavbar } from '~/components/molecules/PublicNavbar';
+import { PublicFooter } from '~/components/molecules/PublicFooter';
 
 export default function RegisterPage() {
   return (

@@ -1,15 +1,15 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router";
-import { Lock, Mail, ArrowRight, ShieldCheck, AlertCircle } from "lucide-react";
-import { Button } from "~/components/atoms/Button";
-import { BrandLogo } from "~/components/atoms/BrandLogo";
-import { Badge } from "~/components/atoms/Badge";
-import { AuthService } from "~/features/auth/services/auth.service";
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router';
+import { Lock, Mail, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Button } from '~/components/atoms/Button';
+import { BrandLogo } from '~/components/atoms/BrandLogo';
+import { Badge } from '~/components/atoms/Badge';
+import { AuthService } from '~/features/auth/services/auth.service';
 
 export function LoginForm() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("parikesitad-pm@modula.tools");
-  const [password, setPassword] = useState("ModulaStack2026!");
+  const [email, setEmail] = useState('parikesitad-pm@modula.tools');
+  const [password, setPassword] = useState('ModulaStack2026!');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,9 +20,9 @@ export function LoginForm() {
 
     try {
       await AuthService.login({ email, password });
-      navigate("/app", { replace: true });
+      navigate('/app', { replace: true });
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Authentication failed");
+      setError(err instanceof Error ? err.message : 'Authentication failed');
     } finally {
       setIsLoading(false);
     }
@@ -100,7 +100,7 @@ export function LoginForm() {
           disabled={isLoading}
           className="w-full justify-center mt-2"
         >
-          <span>{isLoading ? "Authenticating..." : "Authorize Session"}</span>
+          <span>{isLoading ? 'Authenticating...' : 'Authorize Session'}</span>
           <ArrowRight className="h-4 w-4" />
         </Button>
       </form>

@@ -12,4 +12,4 @@ export interface AuthSessionState {
   error: string | null;
 }
 
-export type AuthMode = "login" | "register" | "verify" | "forgot_password";
+export type AuthMode = 'login' | 'register' | 'verify' | 'forgot_password';

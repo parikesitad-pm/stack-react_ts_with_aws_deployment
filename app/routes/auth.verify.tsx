@@ -1,6 +1,6 @@
-import { VerifyEmailForm } from "~/features/auth/components/VerifyEmailForm";
-import { PublicNavbar } from "~/components/molecules/PublicNavbar";
-import { PublicFooter } from "~/components/molecules/PublicFooter";
+import { VerifyEmailForm } from '~/features/auth/components/VerifyEmailForm';
+import { PublicNavbar } from '~/components/molecules/PublicNavbar';
+import { PublicFooter } from '~/components/molecules/PublicFooter';
 
 export default function VerifyPage() {
   return (

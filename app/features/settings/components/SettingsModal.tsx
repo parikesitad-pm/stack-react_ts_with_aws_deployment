@@ -251,16 +251,28 @@ export function SettingsModal({
                     </div>
                     <div className="pt-2 border-t border-stack-metal/40 space-y-1">
                       <div className="flex justify-between text-[11px]">
-                        <span className="text-stack-steel">Cognito Sub Identity:</span>
-                        <span className="text-stack-bone font-mono">{user?.sub || "Anonymous"}</span>
+                        <span className="text-stack-steel">
+                          Cognito Sub Identity:
+                        </span>
+                        <span className="text-stack-bone font-mono">
+                          {user?.sub || 'Anonymous'}
+                        </span>
                       </div>
                       <div className="flex justify-between text-[11px]">
-                        <span className="text-stack-steel">Account Identity:</span>
-                        <span className="text-stack-silver font-mono">{user?.email || "Local Demo"}</span>
+                        <span className="text-stack-steel">
+                          Account Identity:
+                        </span>
+                        <span className="text-stack-silver font-mono">
+                          {user?.email || 'Local Demo'}
+                        </span>
                       </div>
                       <div className="flex justify-between text-[11px]">
-                        <span className="text-stack-steel">DynamoDB Partition:</span>
-                        <span className="text-stack-silver font-mono">USER#{user?.sub || "demo"}</span>
+                        <span className="text-stack-steel">
+                          DynamoDB Partition:
+                        </span>
+                        <span className="text-stack-silver font-mono">
+                          USER#{user?.sub || 'demo'}
+                        </span>
                       </div>
                     </div>
                   </div>

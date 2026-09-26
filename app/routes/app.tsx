@@ -1,19 +1,19 @@
-import { useState, useMemo, useEffect, useRef, lazy, Suspense } from "react";
-import { useNavigate } from "react-router";
-import { initialNotes } from "~/features/notes/data/mockNotes";
-import type { Note, NoteFilter } from "~/features/notes/types/note.types";
-import type { SyncState } from "~/components/atoms/StatusIndicator";
-import type { EditorMode } from "~/components/molecules/EditorModeSwitcher";
-import { AppSidebar } from "~/components/organisms/AppSidebar";
-import { AppHeader } from "~/components/organisms/AppHeader";
-import { MarkdownPreview } from "~/features/editor/components/MarkdownPreview";
-import { CommandPaletteModal } from "~/features/search/components/CommandPaletteModal";
-import { SettingsModal } from "~/features/settings/components/SettingsModal";
-import { useAuthSession } from "~/features/auth/hooks/useAuthSession";
-import { useSignOut } from "~/features/auth/hooks/useSignOut";
+import { useState, useMemo, useEffect, useRef, lazy, Suspense } from 'react';
+import { useNavigate } from 'react-router';
+import { initialNotes } from '~/features/notes/data/mockNotes';
+import type { Note, NoteFilter } from '~/features/notes/types/note.types';
+import type { SyncState } from '~/components/atoms/StatusIndicator';
+import type { EditorMode } from '~/components/molecules/EditorModeSwitcher';
+import { AppSidebar } from '~/components/organisms/AppSidebar';
+import { AppHeader } from '~/components/organisms/AppHeader';
+import { MarkdownPreview } from '~/features/editor/components/MarkdownPreview';
+import { CommandPaletteModal } from '~/features/search/components/CommandPaletteModal';
+import { SettingsModal } from '~/features/settings/components/SettingsModal';
+import { useAuthSession } from '~/features/auth/hooks/useAuthSession';
+import { useSignOut } from '~/features/auth/hooks/useSignOut';
 
 const CodeMirrorEditor = lazy(() =>
-  import("~/features/editor/components/CodeMirrorEditor").then((m) => ({
+  import('~/features/editor/components/CodeMirrorEditor').then((m) => ({
     default: m.CodeMirrorEditor,
   }))
 );
@@ -24,10 +24,10 @@ export default function AppPage() {
   const { handleSignOut } = useSignOut();
 
   const [notes, setNotes] = useState<Note[]>(initialNotes);
-  const [activeNoteId, setActiveNoteId] = useState<string>("note-1");
-  const [editorMode, setEditorMode] = useState<EditorMode>("split");
-  const [syncState, setSyncState] = useState<SyncState>("saved_locally");
-  const [activeFilter, setActiveFilter] = useState<NoteFilter>("all");
+  const [activeNoteId, setActiveNoteId] = useState<string>('note-1');
+  const [editorMode, setEditorMode] = useState<EditorMode>('split');
+  const [syncState, setSyncState] = useState<SyncState>('saved_locally');
+  const [activeFilter, setActiveFilter] = useState<NoteFilter>('all');
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -37,17 +37,19 @@ export default function AppPage() {
   // Protected route guard
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
-      navigate("/auth/login", { replace: true });
+      navigate('/auth/login', { replace: true });
     }
   }, [isAuthenticated, isAuthLoading, navigate]);
 
   const activeNote = useMemo(() => {
-    return notes.find((n) => n.id === activeNoteId) || notes[0] || initialNotes[0];
+    return (
+      notes.find((n) => n.id === activeNoteId) || notes[0] || initialNotes[0]
+    );
   }, [notes, activeNoteId]);
 
   // Compute word and char counts
   const { wordCount, charCount } = useMemo(() => {
-    const text = activeNote?.content || "";
+    const text = activeNote?.content || '';
     const words = text.trim().length > 0 ? text.trim().split(/\s+/).length : 0;
     return { wordCount: words, charCount: text.length };
   }, [activeNote?.content]);
@@ -55,46 +57,46 @@ export default function AppPage() {
   // Global key bindings: Ctrl+K, Ctrl+N, Ctrl+1/2/3
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setIsCommandPaletteOpen((prev) => !prev);
       }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "n") {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
         e.preventDefault();
         handleCreateNote();
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === "1") {
+      if ((e.ctrlKey || e.metaKey) && e.key === '1') {
         e.preventDefault();
-        setEditorMode("write");
+        setEditorMode('write');
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === "2") {
+      if ((e.ctrlKey || e.metaKey) && e.key === '2') {
         e.preventDefault();
-        setEditorMode("split");
+        setEditorMode('split');
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === "3") {
+      if ((e.ctrlKey || e.metaKey) && e.key === '3') {
         e.preventDefault();
-        setEditorMode("read");
+        setEditorMode('read');
       }
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const handleContentChange = (newContent: string) => {
-    setSyncState("syncing");
+    setSyncState('syncing');
 
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
 
     setNotes((prevNotes) =>
       prevNotes.map((n) =>
         n.id === activeNoteId
-          ? { ...n, content: newContent, updatedAt: "Just now" }
+          ? { ...n, content: newContent, updatedAt: 'Just now' }
           : n
       )
     );
 
     saveTimerRef.current = setTimeout(() => {
-      setSyncState("saved_locally");
+      setSyncState('saved_locally');
     }, 450);
   };
 
@@ -102,7 +104,7 @@ export default function AppPage() {
     setNotes((prevNotes) =>
       prevNotes.map((n) =>
         n.id === activeNoteId
-          ? { ...n, title: newTitle, updatedAt: "Just now" }
+          ? { ...n, title: newTitle, updatedAt: 'Just now' }
           : n
       )
     );
@@ -120,25 +122,25 @@ export default function AppPage() {
     if (notes.length <= 1) return;
     const remaining = notes.filter((n) => n.id !== activeNoteId);
     setNotes(remaining);
-    setActiveNoteId(remaining[0]?.id || "");
+    setActiveNoteId(remaining[0]?.id || '');
   };
 
   const handleCreateNote = () => {
     const newId = `note-${Date.now()}`;
     const newNote: Note = {
       id: newId,
-      title: "New Note",
+      title: 'New Note',
       content: `# New Note\n\nBegin typing Markdown here...`,
-      tags: ["draft"],
+      tags: ['draft'],
       isPinned: false,
       isArchived: false,
-      createdAt: "Just now",
-      updatedAt: "Just now",
-      syncStatus: "saved_locally",
+      createdAt: 'Just now',
+      updatedAt: 'Just now',
+      syncStatus: 'saved_locally',
     };
     setNotes((prev) => [newNote, ...prev]);
     setActiveNoteId(newId);
-    setEditorMode("write");
+    setEditorMode('write');
   };
 
   if (isAuthLoading) {
@@ -212,7 +214,7 @@ export default function AppPage() {
       {/* Main Workspace Area */}
       <div className="flex flex-1 flex-col h-full overflow-hidden bg-stack-bg">
         <AppHeader
-          title={activeNote?.title || ""}
+          title={activeNote?.title || ''}
           onTitleChange={handleTitleChange}
           tags={activeNote?.tags || []}
           isPinned={activeNote?.isPinned || false}
@@ -230,7 +232,7 @@ export default function AppPage() {
         {/* Workspace Body depending on mode */}
         <div className="flex-1 flex overflow-hidden">
           {/* Write Mode */}
-          {editorMode === "write" && (
+          {editorMode === 'write' && (
             <div className="flex-1 h-full overflow-hidden">
               <Suspense
                 fallback={
@@ -240,7 +242,7 @@ export default function AppPage() {
                 }
               >
                 <CodeMirrorEditor
-                  value={activeNote?.content || ""}
+                  value={activeNote?.content || ''}
                   onChange={handleContentChange}
                 />
               </Suspense>
@@ -248,7 +250,7 @@ export default function AppPage() {
           )}
 
           {/* Split Mode: CodeMirror on left, rendered preview on right */}
-          {editorMode === "split" && (
+          {editorMode === 'split' && (
             <div className="flex-1 flex flex-col md:flex-row h-full overflow-hidden">
               <div className="flex-1 h-1/2 md:h-full border-b md:border-b-0 md:border-r border-stack-metal/70 overflow-hidden">
                 <Suspense
@@ -259,22 +261,22 @@ export default function AppPage() {
                   }
                 >
                   <CodeMirrorEditor
-                    value={activeNote?.content || ""}
+                    value={activeNote?.content || ''}
                     onChange={handleContentChange}
                   />
                 </Suspense>
               </div>
               <div className="flex-1 h-1/2 md:h-full overflow-y-auto bg-stack-surface/30">
-                <MarkdownPreview content={activeNote?.content || ""} />
+                <MarkdownPreview content={activeNote?.content || ''} />
               </div>
             </div>
           )}
 
           {/* Read Mode: Formatted Preview only */}
-          {editorMode === "read" && (
+          {editorMode === 'read' && (
             <div className="flex-1 h-full overflow-y-auto bg-stack-surface/20">
               <div className="mx-auto max-w-4xl py-6">
-                <MarkdownPreview content={activeNote?.content || ""} />
+                <MarkdownPreview content={activeNote?.content || ''} />
               </div>
             </div>
           )}

@@ -1,5 +1,5 @@
-import { useNavigate } from "react-router";
-import { AuthService } from "~/features/auth/services/auth.service";
+import { useNavigate } from 'react-router';
+import { AuthService } from '~/features/auth/services/auth.service';
 
 export function useSignOut() {
   const navigate = useNavigate();
@@ -8,10 +8,10 @@ export function useSignOut() {
     try {
       await AuthService.logout();
       // Navigate to login screen
-      navigate("/auth/login", { replace: true });
+      navigate('/auth/login', { replace: true });
     } catch (err) {
-      console.error("Sign out failure:", err);
-      navigate("/auth/login", { replace: true });
+      console.error('Sign out failure:', err);
+      navigate('/auth/login', { replace: true });
     }
   };
 

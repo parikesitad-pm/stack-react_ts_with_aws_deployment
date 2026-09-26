@@ -1,18 +1,24 @@
-import { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router";
-import { KeyRound, Mail, ArrowRight, CheckCircle2, AlertCircle } from "lucide-react";
-import { Button } from "~/components/atoms/Button";
-import { BrandLogo } from "~/components/atoms/BrandLogo";
-import { Badge } from "~/components/atoms/Badge";
-import { AuthService } from "~/features/auth/services/auth.service";
+import { useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router';
+import {
+  KeyRound,
+  Mail,
+  ArrowRight,
+  CheckCircle2,
+  AlertCircle,
+} from 'lucide-react';
+import { Button } from '~/components/atoms/Button';
+import { BrandLogo } from '~/components/atoms/BrandLogo';
+import { Badge } from '~/components/atoms/Badge';
+import { AuthService } from '~/features/auth/services/auth.service';
 
 export function VerifyEmailForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const initialEmail = searchParams.get("email") || "";
+  const initialEmail = searchParams.get('email') || '';
 
   const [email, setEmail] = useState(initialEmail);
-  const [code, setCode] = useState("");
+  const [code, setCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,9 +29,11 @@ export function VerifyEmailForm() {
 
     try {
       await AuthService.verifyEmail({ email, code });
-      navigate("/auth/login?verified=true", { replace: true });
+      navigate('/auth/login?verified=true', { replace: true });
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Verification code invalid");
+      setError(
+        err instanceof Error ? err.message : 'Verification code invalid'
+      );
     } finally {
       setIsLoading(false);
     }
@@ -96,7 +104,7 @@ export function VerifyEmailForm() {
           disabled={isLoading || code.length !== 6}
           className="w-full justify-center mt-2"
         >
-          <span>{isLoading ? "Validating..." : "Confirm & Activate"}</span>
+          <span>{isLoading ? 'Validating...' : 'Confirm & Activate'}</span>
           <ArrowRight className="h-4 w-4" />
         </Button>
       </form>

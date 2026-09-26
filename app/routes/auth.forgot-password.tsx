@@ -1,6 +1,6 @@
-import { ForgotPasswordForm } from "~/features/auth/components/ForgotPasswordForm";
-import { PublicNavbar } from "~/components/molecules/PublicNavbar";
-import { PublicFooter } from "~/components/molecules/PublicFooter";
+import { ForgotPasswordForm } from '~/features/auth/components/ForgotPasswordForm';
+import { PublicNavbar } from '~/components/molecules/PublicNavbar';
+import { PublicFooter } from '~/components/molecules/PublicFooter';
 
 export default function ForgotPasswordPage() {
   return (

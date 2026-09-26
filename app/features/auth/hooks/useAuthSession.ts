@@ -1,7 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
-import { AuthService } from "~/features/auth/services/auth.service";
-import type { AuthUser, AuthSessionState } from "~/features/auth/types/auth.types";
-import type { LoginInput } from "~/features/auth/schemas/login.schema";
+import { useState, useEffect, useCallback } from 'react';
+import { AuthService } from '~/features/auth/services/auth.service';
+import type {
+  AuthUser,
+  AuthSessionState,
+} from '~/features/auth/types/auth.types';
+import type { LoginInput } from '~/features/auth/schemas/login.schema';
 
 export function useAuthSession() {
   const [state, setState] = useState<AuthSessionState>({
@@ -46,7 +49,7 @@ export function useAuthSession() {
       });
       return user;
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Authentication failed";
+      const msg = err instanceof Error ? err.message : 'Authentication failed';
       setState((prev) => ({ ...prev, isLoading: false, error: msg }));
       throw err;
     }

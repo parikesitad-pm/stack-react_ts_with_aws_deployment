@@ -1,12 +1,12 @@
-import { useState } from "react";
-import { Link } from "react-router";
-import { Mail, ArrowRight, CheckCircle2, AlertCircle } from "lucide-react";
-import { Button } from "~/components/atoms/Button";
-import { BrandLogo } from "~/components/atoms/BrandLogo";
-import { Badge } from "~/components/atoms/Badge";
+import { useState } from 'react';
+import { Link } from 'react-router';
+import { Mail, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Button } from '~/components/atoms/Button';
+import { BrandLogo } from '~/components/atoms/BrandLogo';
+import { Badge } from '~/components/atoms/Badge';
 
 export function ForgotPasswordForm() {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -41,11 +41,17 @@ export function ForgotPasswordForm() {
             <span>Reset Instructions Dispatched</span>
           </div>
           <p className="text-stack-silver text-[11px] leading-relaxed">
-            If an account exists for <span className="text-stack-bone">{email}</span>, a reset token has been transmitted to your inbox.
+            If an account exists for{' '}
+            <span className="text-stack-bone">{email}</span>, a reset token has
+            been transmitted to your inbox.
           </p>
           <div className="pt-2">
             <Link to="/auth/login">
-              <Button variant="secondary" size="sm" className="w-full justify-center">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="w-full justify-center"
+              >
                 Return to Login
               </Button>
             </Link>
@@ -77,7 +83,7 @@ export function ForgotPasswordForm() {
             disabled={isLoading}
             className="w-full justify-center mt-2"
           >
-            <span>{isLoading ? "Dispatching..." : "Transmit Reset Code"}</span>
+            <span>{isLoading ? 'Dispatching...' : 'Transmit Reset Code'}</span>
             <ArrowRight className="h-4 w-4" />
           </Button>
         </form>

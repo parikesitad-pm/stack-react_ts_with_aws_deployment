@@ -7,12 +7,15 @@ import {
   confirmResetPassword,
   fetchAuthSession,
   getCurrentUser,
-} from "aws-amplify/auth";
-import type { AuthUser } from "~/features/auth/types/auth.types";
-import type { LoginInput } from "~/features/auth/schemas/login.schema";
-import type { RegisterInput, VerifyEmailInput } from "~/features/auth/schemas/register.schema";
+} from 'aws-amplify/auth';
+import type { AuthUser } from '~/features/auth/types/auth.types';
+import type { LoginInput } from '~/features/auth/schemas/login.schema';
+import type {
+  RegisterInput,
+  VerifyEmailInput,
+} from '~/features/auth/schemas/register.schema';
 
-const MOCK_STORAGE_KEY = "stack:mock_session";
+const MOCK_STORAGE_KEY = 'stack:mock_session';
 
 export class AuthService {
   /**
@@ -20,8 +23,9 @@ export class AuthService {
    */
   static isCognitoConfigured(): boolean {
     return Boolean(
-      typeof window !== "undefined" &&
-      (window as unknown as { __AMPLIFY_CONFIGURED__?: boolean }).__AMPLIFY_CONFIGURED__
+      typeof window !== 'undefined' &&
+      (window as unknown as { __AMPLIFY_CONFIGURED__?: boolean })
+        .__AMPLIFY_CONFIGURED__
     );
   }
 
@@ -36,7 +40,7 @@ export class AuthService {
         const sub = session.userSub || user.userId;
         return {
           sub,
-          email: user.signInDetails?.loginId || "",
+          email: user.signInDetails?.loginId || '',
           emailVerified: true,
           username: user.username,
         };
@@ -46,7 +50,7 @@ export class AuthService {
     }
 
     // Mock session for UI mockup evaluation
-    if (typeof window !== "undefined") {
+    if (typeof window !== 'undefined') {
       const stored = localStorage.getItem(MOCK_STORAGE_KEY);
       if (stored) {
         try {
@@ -72,7 +76,7 @@ export class AuthService {
         const session = await this.getCurrentSession();
         if (session) return session;
       }
-      throw new Error("Additional sign-in step required");
+      throw new Error('Additional sign-in step required');
     }
 
     // Interactive mockup authentication
@@ -80,9 +84,9 @@ export class AuthService {
       sub: `usr_${btoa(input.email).slice(0, 10).toLowerCase()}`,
       email: input.email,
       emailVerified: true,
-      username: input.email.split("@")[0] || "operator",
+      username: input.email.split('@')[0] || 'operator',
     };
-    if (typeof window !== "undefined") {
+    if (typeof window !== 'undefined') {
       localStorage.setItem(MOCK_STORAGE_KEY, JSON.stringify(mockUser));
     }
     return mockUser;
@@ -91,7 +95,9 @@ export class AuthService {
   /**
    * Sign Up new account
    */
-  static async register(input: RegisterInput): Promise<{ isComplete: boolean; nextStep: string }> {
+  static async register(
+    input: RegisterInput
+  ): Promise<{ isComplete: boolean; nextStep: string }> {
     if (this.isCognitoConfigured()) {
       const res = await signUp({
         username: input.email,
@@ -110,7 +116,7 @@ export class AuthService {
 
     return {
       isComplete: false,
-      nextStep: "CONFIRM_SIGN_UP_STEP",
+      nextStep: 'CONFIRM_SIGN_UP_STEP',
     };
   }
 
@@ -136,11 +142,11 @@ export class AuthService {
       try {
         await signOut({ global: false });
       } catch (err) {
-        console.error("Cognito sign-out error", err);
+        console.error('Cognito sign-out error', err);
       }
     }
 
-    if (typeof window !== "undefined") {
+    if (typeof window !== 'undefined') {
       localStorage.removeItem(MOCK_STORAGE_KEY);
     }
   }
