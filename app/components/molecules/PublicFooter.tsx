@@ -27,6 +27,9 @@ export function PublicFooter() {
           <Link to="/changelog" className="hover:text-stack-bone">
             Changelog
           </Link>
+          <Link to="/modula-project" className="hover:text-stack-bone">
+            More from Modula
+          </Link>
           <Link to="/app" className="text-stack-red-hover hover:underline">
             Launch App
           </Link>

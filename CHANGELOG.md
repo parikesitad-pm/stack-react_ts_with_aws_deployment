@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-09-27
+
+### Added
+
+- Public project registry route (`/modula-project`) exhibiting systems engineered under the Modula Project umbrella.
+- Industrial "Mission Roster" layout featuring square/beveled technical separators, subtle status lamps, and zero generic SaaS cards.
+- Stable status sorting prioritizing live production deployments while preserving source order for systems under reconstruction.
+- Real-time telemetry counters dynamically computed from the typed project constant (Total, Live, Under Reconstruction).
+- Prerendering of `/modula-project` into static HTML (`build/client/modula-project/index.html`) in React Router Framework Mode.
+- Integrated `Modula Projects` navigation link in header and `More from Modula` in public footer.
+- Updated `sitemap.xml` with canonical indexing metadata for `/modula-project`.
+
 ## [0.4.0] - 2026-09-27
 
 ### Added

@@ -12,6 +12,7 @@ export function PublicNavbar() {
     { href: '/docs', label: 'Documentation' },
     { href: '/help', label: 'Help & FAQ' },
     { href: '/changelog', label: 'Changelog' },
+    { href: '/modula-project', label: 'Modula Projects' },
   ];
 
   return (

@@ -3,6 +3,7 @@
 > Markdown notes without the noise.
 
 - **Canonical site**: [https://stack-md.online](https://stack-md.online)
+- **Modula Registry**: [https://stack-md.online/modula-project](https://stack-md.online/modula-project)
 - **Repository**: [https://github.com/parikesitad-pm/stack-react_ts_with_aws_deployment.git](https://github.com/parikesitad-pm/stack-react_ts_with_aws_deployment.git)
 - **Author**: parikesitad-pm
 - **License**: MIT License (2026)
@@ -103,7 +104,6 @@ For developers using browsers where the standard Chrome/Firefox extension is una
 
 > [!NOTE]
 > The DevTools connection script is guarded by `import.meta.env.DEV` in `app/root.tsx`. It is completely stripped out of production builds by Vite dead-code elimination (0 bytes and no network requests in production).
-
 
 ---
 
