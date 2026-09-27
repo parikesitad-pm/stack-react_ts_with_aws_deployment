@@ -67,11 +67,7 @@ export const attachmentRepository = {
     logicalPath?: string
   ): Promise<Blob | null> {
     if (noteId && logicalPath) {
-      const result = await this.getAttachmentByPath(
-        subOrPath,
-        noteId,
-        logicalPath
-      );
+      const result = await this.getAttachmentByPath(subOrPath, noteId, logicalPath);
       return result ? result.blob : null;
     }
 
@@ -144,11 +140,7 @@ export const attachmentRepository = {
     );
 
     return found
-      ? {
-          blob: found.blob,
-          mimeType: found.mimeType,
-          attachment: found.attachment,
-        }
+      ? { blob: found.blob, mimeType: found.mimeType, attachment: found.attachment }
       : null;
   },
 

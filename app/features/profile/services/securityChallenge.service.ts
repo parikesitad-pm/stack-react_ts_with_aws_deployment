@@ -16,10 +16,7 @@ export type ChallengePurpose =
   | 'add-password'
   | 'delete-account';
 
-import {
-  stackApiFetch,
-  getStackApiBaseUrl,
-} from '~/features/api/stackApiFetch';
+import { stackApiFetch, getStackApiBaseUrl } from '~/features/api/stackApiFetch';
 
 export interface SecurityChallengeRecord {
   challengeId: string;

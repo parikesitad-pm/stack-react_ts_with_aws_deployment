@@ -22,7 +22,7 @@ export function StackAuthProvider({ children }: StackAuthProviderProps) {
       clientId={config.clientId}
       authorizationParams={{
         redirect_uri: config.redirectUri,
-        ...(config.audience ? { audience: config.audience } : {}),
+        audience: config.audience,
         scope: 'openid profile email',
       }}
       onRedirectCallback={handleRedirectCallback}

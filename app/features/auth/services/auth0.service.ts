@@ -30,11 +30,10 @@ export function getAuth0Config(): Auth0Config {
     (typeof import.meta !== 'undefined' &&
       import.meta.env?.VITE_AUTH0_CLIENT_ID) ||
     'zvFH3CSBnuruw9DBcNgslKaQkhlBtdAO';
-  const rawAudience =
-    typeof import.meta !== 'undefined'
-      ? import.meta.env?.VITE_AUTH0_AUDIENCE
-      : undefined;
-  const audience = rawAudience?.trim() || undefined;
+  const audience =
+    (typeof import.meta !== 'undefined' &&
+      import.meta.env?.VITE_AUTH0_AUDIENCE) ||
+    'urn:stack:api';
 
   const redirectUri =
     typeof window !== 'undefined'
