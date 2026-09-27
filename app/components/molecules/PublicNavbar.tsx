@@ -18,6 +18,7 @@ export function PublicNavbar() {
 
   const navLinks = [
     { href: '/', label: 'Overview' },
+    { href: '/demo', label: 'Demo' },
     { href: '/docs', label: 'Documentation' },
     { href: '/help', label: 'Help & FAQ' },
     { href: '/changelog', label: 'Changelog' },

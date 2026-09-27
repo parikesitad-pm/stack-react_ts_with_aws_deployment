@@ -33,7 +33,6 @@ export function useAuthSession() {
 
   const queryClient = useQueryClient();
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [profileError, setProfileError] = useState<string | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [claimsVerified, setClaimsVerified] = useState<boolean | null>(null);
@@ -58,17 +57,9 @@ export function useAuthSession() {
           if (authToken) {
             try {
               const p = await IdentityService.getProfile(authToken);
-              if (isMounted) {
-                setProfile(p);
-                setProfileError(null);
-              }
-            } catch (err) {
-              console.error('[useAuthSession] Failed to fetch /me:', err);
-              if (isMounted) {
-                setProfileError(
-                  err instanceof Error ? err.message : 'API_ERROR'
-                );
-              }
+              if (isMounted) setProfile(p);
+            } catch {
+              // Ignore failure
             }
           }
         })
@@ -78,10 +69,7 @@ export function useAuthSession() {
           if (IdentityService.isDevOrTest() && auth0User?.sub) {
             try {
               const p = await IdentityService.getProfile(auth0User.sub);
-              if (isMounted) {
-                setProfile(p);
-                setProfileError(null);
-              }
+              if (isMounted) setProfile(p);
             } catch {
               // Ignore
             }
@@ -93,7 +81,6 @@ export function useAuthSession() {
     } else {
       attachmentRepository.setActiveSub(null);
       setProfile(null);
-      setProfileError(null);
       setToken(null);
     }
     return () => {
@@ -117,8 +104,8 @@ export function useAuthSession() {
   }, [claimsVerified, auth0User?.email_verified]);
 
   const hasCompletedOnboarding = useMemo(() => {
-    return Boolean(profile?.onboardingCompletedAt || profile?.username);
-  }, [profile?.onboardingCompletedAt, profile?.username]);
+    return Boolean(profile?.onboardingCompletedAt);
+  }, [profile?.onboardingCompletedAt]);
 
   const user: ExtendedAuthUser | null = useMemo(() => {
     if (!auth0User?.sub) return null;
@@ -257,25 +244,18 @@ export function useAuthSession() {
 
   const updateProfile = useCallback(
     (partial: Partial<UserProfile>) => {
-      let result: UserProfile | null = null;
-      setProfile((prev) => {
-        if (!prev) {
-          result = partial as UserProfile;
-          return result;
-        }
-        result = {
-          ...prev,
+      if (profile) {
+        const updated = {
+          ...profile,
           ...partial,
           updatedAt: new Date().toISOString(),
         };
-        return result;
-      });
-      if (auth0User?.sub) {
-        queryClient.invalidateQueries({ queryKey: ['profile', auth0User.sub] });
+        setProfile(updated);
+        return updated;
       }
-      return result;
+      return null;
     },
-    [auth0User?.sub, queryClient]
+    [profile]
   );
 
   const signOut = useCallback(
@@ -305,8 +285,6 @@ export function useAuthSession() {
     user,
     auth0User,
     token,
-    profile,
-    profileError,
     hasCompletedOnboarding,
     isSocial,
     emailVerified,

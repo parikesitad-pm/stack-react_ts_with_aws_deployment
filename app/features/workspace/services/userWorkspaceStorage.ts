@@ -42,7 +42,17 @@ export function hashSub(sub: string): string {
 }
 
 export function getWorkspaceDbName(sub: string): string {
+  if (sub === 'demo') {
+    return 'stack_demo_workspace';
+  }
   return `stack_user_${hashSub(sub)}`;
+}
+
+export function getLayoutStorageKey(sub: string): string {
+  if (sub === 'demo') {
+    return 'stack_demo_layout';
+  }
+  return `stack_layout_${hashSub(sub)}`;
 }
 
 export function buildAttachmentKey(noteId: string, logicalPath: string): string {
@@ -150,7 +160,7 @@ export const userWorkspaceStorage = {
   getLayoutSettings(sub: string): WorkspaceLayoutSettings {
     if (typeof window !== 'undefined' && window.localStorage) {
       try {
-        const raw = localStorage.getItem(`stack_layout_${hashSub(sub)}`);
+        const raw = localStorage.getItem(getLayoutStorageKey(sub));
         if (raw) {
           const parsed = JSON.parse(raw);
           return {
@@ -190,10 +200,7 @@ export const userWorkspaceStorage = {
     memoryLayouts.set(sub, next);
     if (typeof window !== 'undefined' && window.localStorage) {
       try {
-        localStorage.setItem(
-          `stack_layout_${hashSub(sub)}`,
-          JSON.stringify(next)
-        );
+        localStorage.setItem(getLayoutStorageKey(sub), JSON.stringify(next));
       } catch {}
     }
     return next;
@@ -471,7 +478,7 @@ export const userWorkspaceStorage = {
     if (typeof window !== 'undefined') {
       if (window.localStorage) {
         try {
-          localStorage.removeItem(`stack_layout_${hashSub(sub)}`);
+          localStorage.removeItem(getLayoutStorageKey(sub));
         } catch {}
       }
       if ('indexedDB' in window) {

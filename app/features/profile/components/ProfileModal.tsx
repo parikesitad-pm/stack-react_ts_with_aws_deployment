@@ -251,43 +251,26 @@ export function ProfileModal({
       );
       return;
     }
-    // Invariant: Current user's own username must not be treated as a collision against themselves
-    if (profile?.username && clean === normalizeUsername(profile.username)) {
-      setUsernameCheckStatus('idle');
-      setUsernameCheckError('This is already your current username.');
-      return;
-    }
-
     setUsernameCheckStatus('checking');
     try {
       const res = await IdentityService.checkAvailability(
         clean,
         token || undefined
       );
-      if (res.status === 'available') {
+      if (res.available) {
         setUsernameCheckStatus('available');
-      } else if (res.status === 'taken') {
+      } else {
         setUsernameCheckStatus('taken');
         setUsernameCheckError(`@${clean} is already claimed.`);
-      } else {
-        setUsernameCheckStatus('idle');
-        setUsernameCheckError(
-          res.message || "Couldn't check username availability. Try again."
-        );
       }
     } catch {
       setUsernameCheckStatus('idle');
-      setUsernameCheckError("Couldn't check username availability. Try again.");
     }
   };
 
   // Start username change challenge
   const handleInitiateUsernameChange = () => {
     const clean = normalizeUsername(newUsernameInput);
-    if (profile?.username && clean === normalizeUsername(profile.username)) {
-      setUsernameCheckError('This is already your current username.');
-      return;
-    }
     if (usernameCheckStatus !== 'available' || !clean) {
       setUsernameCheckError('Please choose an available username first.');
       return;

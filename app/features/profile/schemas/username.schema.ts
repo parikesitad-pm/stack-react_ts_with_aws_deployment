@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+export const CANONICAL_USERNAME_REGEX = /^[a-z0-9._-]{3,32}$/;
 export const USERNAME_REGEX = /^[a-z0-9._-]+$/;
 
 /**

@@ -142,16 +142,23 @@ export default function LandingPage() {
             </p>
 
             <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
-              <Link to={isAuthenticated ? '/app' : '/auth/register'}>
+              <Link to={isAuthenticated ? '/app' : '/demo'}>
                 <Button variant="primary" size="lg" className="shadow-lg">
                   <span>
-                    {isAuthenticated ? 'Workspace' : 'Get started'}
+                    {isAuthenticated ? 'Open Workspace' : 'Try STACK Demo'}
                   </span>
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
+              {!isAuthenticated && (
+                <Link to="/auth/register">
+                  <Button variant="secondary" size="lg">
+                    <span>Create Account</span>
+                  </Button>
+                </Link>
+              )}
               <Link to="/docs">
-                <Button variant="secondary" size="lg">
+                <Button variant="outline" size="lg">
                   <span>Explore Docs</span>
                 </Button>
               </Link>

@@ -62,17 +62,10 @@ export function OnboardingModal({
     setIsSubmitting(true);
     try {
       const avail = await IdentityService.checkAvailability(normalized, token);
-      if (avail.status === 'taken') {
-        setError(`That username is already taken.`);
+      if (!avail.available) {
+        setError(`@${normalized} is already taken.`);
         setUsernameSuggestions(
           avail.suggestions || IdentityService.suggestAlternatives(normalized)
-        );
-        setIsSubmitting(false);
-        return;
-      }
-      if (avail.status === 'error') {
-        setError(
-          avail.message || "Couldn't check username availability. Try again."
         );
         setIsSubmitting(false);
         return;
@@ -80,8 +73,8 @@ export function OnboardingModal({
       setIsSubmitting(false);
       setStep(2);
     } catch {
-      setError("Couldn't check username availability. Try again.");
       setIsSubmitting(false);
+      setStep(2);
     }
   };
 
@@ -115,12 +108,6 @@ export function OnboardingModal({
         setError(`That username is already taken.`);
         setUsernameSuggestions(IdentityService.suggestAlternatives(normalized));
         setStep(1);
-      } else if (
-        msg === 'AUTH_TOKEN_REQUIRED' ||
-        msg.includes('AUTH_REQUIRED') ||
-        msg.includes('session needs to be refreshed')
-      ) {
-        setError('Your session needs to be refreshed. Sign in again.');
       } else {
         setError(msg);
       }
@@ -205,7 +192,7 @@ export function OnboardingModal({
               )}
 
               <p className="text-[10px] text-stack-steel/80">
-                3–24 characters. Use lowercase letters, numbers, or underscore.
+                3–32 characters. Use lowercase letters, numbers, dot, underscore, or hyphen.
               </p>
             </div>
 

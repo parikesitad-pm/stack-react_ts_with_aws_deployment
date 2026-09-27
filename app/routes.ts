@@ -17,4 +17,5 @@ export default [
   route('app/search', 'routes/app.search.tsx'),
   route('app/settings', 'routes/app.settings.tsx'),
   route('profile', 'routes/profile.tsx'),
+  route('demo', 'routes/demo.tsx'),
 ] satisfies RouteConfig;

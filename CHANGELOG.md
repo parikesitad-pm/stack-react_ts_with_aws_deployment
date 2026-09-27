@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Interactive public demo workspace at `/demo` (`https://stack-md.online/demo`) operating in complete isolation under `stack_demo_workspace` (IndexedDB) and `stack_demo_layout` (localStorage).
+- Seeded demo workspace with sample folders ("Getting Started", "Projects", "Ideas"), notes ("Welcome to STACK", "Markdown Playground", "Local-First Notes", "Keyboard Shortcuts"), tags (`#markdown`, `#local-first`, `#demo`), and bundled branding image asset.
+- Persistent demo mode top bar with one-click "Reset Demo" action, "Create Account", and "Sign In" navigation.
+- Demo mode CTA ("Try STACK Demo") featured on the public navigation bar and landing page hero.
+
+### Changed
+
+- Aligned canonical username contract across frontend schemas, onboarding UI copy, and profile modal to `^[a-z0-9._-]{3,32}$` (3–32 characters, lowercase letters, numbers, dot, underscore, and hyphen, no stored leading `@`).
+
 ### Fixed
 
 - Fixed username availability check collapsing non-2xx responses, backend validation errors, or network issues into false "already taken" collisions.

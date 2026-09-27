@@ -24,13 +24,13 @@ export class DevMockIdentityAdapter {
   private static memoryStore: MockDynamoItem[] = [];
 
   static suggestAlternatives(base: string): string[] {
-    const clean = normalizeUsername(base).slice(0, 20);
+    const clean = normalizeUsername(base);
     const year = new Date().getFullYear();
     const candidates = [
-      `${clean}_${year.toString().slice(-2)}`,
+      `${clean}.${year.toString().slice(-2)}`,
       `${clean}_pm`,
-      `${clean}_notes`,
-      `${clean}_stack`,
+      `${clean}-notes`,
+      `${clean}.stack`,
       `${clean}01`,
     ];
     return candidates.filter((c) => usernameSchema.safeParse(c).success);
@@ -40,32 +40,17 @@ export class DevMockIdentityAdapter {
     const normalized = normalizeUsername(rawUsername);
     const validation = usernameSchema.safeParse(normalized);
     if (!validation.success) {
-      return {
-        status: 'error',
-        available: false,
-        code: 'INVALID_USERNAME',
-        message: validation.error.issues[0]?.message || 'Invalid username.',
-        normalizedUsername: normalized,
-      };
+      return { available: false, normalizedUsername: normalized };
     }
 
     const items = this.loadItems();
     const claimPk = `USERNAME#${normalized}`;
     const isTaken = items.some((item) => item.PK === claimPk);
 
-    if (isTaken) {
-      return {
-        status: 'taken',
-        available: false,
-        normalizedUsername: normalized,
-        suggestions: this.suggestAlternatives(normalized),
-      };
-    }
-
     return {
-      status: 'available',
-      available: true,
+      available: !isTaken,
       normalizedUsername: normalized,
+      suggestions: isTaken ? this.suggestAlternatives(normalized) : undefined,
     };
   }
 
