@@ -101,6 +101,7 @@ export function ImportExportModal({
   };
 
   const applyImportedNotes = (candidates: ImportCandidate[]) => {
+    const now = new Date().toISOString();
     const newNotes: Note[] = candidates.map((cand, idx) => ({
       id: `imported-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       title: cand.title,
@@ -109,9 +110,10 @@ export function ImportExportModal({
       folderId: null,
       order: idx,
       isPinned: false,
-      isArchived: false,
-      createdAt: 'Just now',
-      updatedAt: 'Just now',
+      archivedAt: null,
+      deletedAt: null,
+      createdAt: now,
+      updatedAt: now,
       syncStatus: 'saved_locally',
     }));
     onImportNotes(newNotes);

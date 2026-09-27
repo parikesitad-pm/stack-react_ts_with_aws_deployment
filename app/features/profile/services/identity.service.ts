@@ -33,9 +33,7 @@ export class IdentityService {
     if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') {
       return true;
     }
-    return Boolean(
-      typeof import.meta !== 'undefined' && import.meta.env?.DEV
-    );
+    return Boolean(typeof import.meta !== 'undefined' && import.meta.env?.DEV);
   }
 
   /**
@@ -172,7 +170,9 @@ export class IdentityService {
         throw new Error('USERNAME_TAKEN');
       }
       if (!res.ok) {
-        throw new Error('Failed to complete onboarding on authoritative server');
+        throw new Error(
+          'Failed to complete onboarding on authoritative server'
+        );
       }
       return (await res.json()) as UserProfile;
     }
@@ -269,7 +269,11 @@ export class IdentityService {
    * Strictly requires a verified email security challenge.
    */
   static async updateUsername(
-    payload: { newUsername: string; challengeId: string; challengeCode: string },
+    payload: {
+      newUsername: string;
+      challengeId: string;
+      challengeCode: string;
+    },
     token: string
   ): Promise<UserProfile> {
     if (!token) {
@@ -482,7 +486,11 @@ export class IdentityService {
    * Strictly requires email security challenge and typing @username confirmation.
    */
   static async deleteAccount(
-    payload: { confirmedUsername: string; challengeId: string; challengeCode: string },
+    payload: {
+      confirmedUsername: string;
+      challengeId: string;
+      challengeCode: string;
+    },
     token: string
   ): Promise<boolean> {
     if (!token) {
@@ -528,7 +536,11 @@ export class IdentityService {
    * Helper for dev/test adapter to resolve identity key from mock token
    */
   private static extractSubFromTokenOrFallback(token: string): string {
-    if (token.startsWith('auth0|') || token.startsWith('google-oauth2|') || token.startsWith('github|')) {
+    if (
+      token.startsWith('auth0|') ||
+      token.startsWith('google-oauth2|') ||
+      token.startsWith('github|')
+    ) {
       return token;
     }
     // Attempt simple JWT payload decode if applicable

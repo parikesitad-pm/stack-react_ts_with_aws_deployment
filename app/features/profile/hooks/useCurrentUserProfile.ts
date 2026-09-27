@@ -48,7 +48,10 @@ export function useCurrentUserProfile() {
   const updateFullNameMutation = useMutation({
     mutationFn: async (fullName: string) => {
       const token = await getEffectiveToken();
-      return IdentityService.updateProfile({ fullName: fullName.trim() }, token);
+      return IdentityService.updateProfile(
+        { fullName: fullName.trim() },
+        token
+      );
     },
     onSuccess: (updated) => {
       queryClient.setQueryData(queryKey, updated);

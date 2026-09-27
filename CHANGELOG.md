@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-09-27
+
+### Added
+
+- Nested folder system supporting arbitrary depths with strict folder name validation (1–80 characters, no slashes, no control characters, unique sibling names) and cycle prevention (`wouldCreateCycle`).
+- Safe folder deletion workflow (`SafeDeleteFolderModal`) that preserves folder hierarchy by reparenting only direct notes and immediate child folders to the selected destination, never flattening descendants or allowing reparenting into the deleted subtree.
+- Note and folder sibling reordering with explicit visual drop indicators (restrained red-slate indicators) for `before` and `after` positioning powered by `@atlaskit/pragmatic-drag-and-drop`.
+- Accessible keyboard and touch alternative "Move to…" modal (`MoveItemModal`) for moving notes and folders to cycle-safe destinations.
+- Active-note tag editing UI (`NoteTagEditor`) allowing inline tag viewing, adding with auto-completion from active tags, and removal in the note pane.
+- Sidebar active tag roster (`TagList`) displaying tag frequency counts derived exclusively from active notes.
+- Note state lifecycle precedence: `deletedAt != null` (Trash) takes absolute precedence over `archivedAt != null` (Archive); active notes require both null.
+- Trash and Archive workflows: notes in Trash or Archive are excluded from All Notes, folder listings, and search; restored notes from Trash retain their prior archive state.
+- Resizable sidebar bounded between 220px and 420px with pointer drag handle and user-scoped width persistence on `pointerup`.
+- Sidebar layout modes: Expanded, Compact (56px rail mode), and Zen mode with `Ctrl+\` / `Cmd+\` keyboard shortcut and floating exit button.
+- User-scoped layout settings storage (`userWorkspaceStorage.saveLayoutSettings`) scoped by Auth0 `sub` (`stack_layout_{hashSub(sub)}`) for sidebar mode, width, and expanded folder IDs.
+- Persistence atomicity with optimistic UI updates and rollback on IndexedDB failure.
+- Sprint 3 automated test suite (`workspaceOrganization.test.ts`) covering folder hierarchy, safe deletion, cycle prevention, sibling reordering, state precedence, tags, and user layout isolation (all 45/45 tests passing).
+
+### Changed
+
+- Strictly separated Folder (*"Where this note lives"*, 0 or 1) from Tag (*"What this note is about"*, 0 or more).
+- Migrated all unpartitioned `localStorage` layout keys to strictly user-scoped storage namespaces.
+
 ## [0.6.0] - 2026-09-27
 
 ### Added

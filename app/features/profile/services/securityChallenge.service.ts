@@ -98,7 +98,9 @@ export class MockSecurityChallengeAdapter {
 
     this.store.set(challengeId, record);
 
-    console.info(`[STACK DEV CHALLENGE] [${purpose}] Code for ${ownerSub}: ${rawCode}`);
+    console.info(
+      `[STACK DEV CHALLENGE] [${purpose}] Code for ${ownerSub}: ${rawCode}`
+    );
 
     return {
       challengeId,
@@ -170,9 +172,7 @@ export class SecurityChallengeService {
     if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') {
       return true;
     }
-    return Boolean(
-      typeof import.meta !== 'undefined' && import.meta.env?.DEV
-    );
+    return Boolean(typeof import.meta !== 'undefined' && import.meta.env?.DEV);
   }
 
   /**

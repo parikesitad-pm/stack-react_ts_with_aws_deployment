@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { ShieldAlert, X, Loader2, ArrowRight } from 'lucide-react';
 import { Button } from '~/components/atoms/Button';
-import { SecurityChallengeService, type ChallengePurpose } from '../services/securityChallenge.service';
+import {
+  SecurityChallengeService,
+  type ChallengePurpose,
+} from '../services/securityChallenge.service';
 
 interface SecurityChallengeModalProps {
   isOpen: boolean;
@@ -139,7 +142,10 @@ export function SecurityChallengeModal({
 
         <div className="flex items-center gap-2.5 text-stack-red-hover mb-3">
           <ShieldAlert className="w-5 h-5" />
-          <h3 id="challenge-dialog-title" className="font-semibold text-sm tracking-tight text-stack-bone">
+          <h3
+            id="challenge-dialog-title"
+            className="font-semibold text-sm tracking-tight text-stack-bone"
+          >
             {title}
           </h3>
         </div>
@@ -152,12 +158,17 @@ export function SecurityChallengeModal({
         {devCode && (
           <div className="mb-4 p-2.5 bg-stack-bg border border-stack-metal text-[11px] text-stack-steel">
             <span className="text-stack-bone font-bold">[Dev Mode Code]:</span>{' '}
-            <span className="text-amber-400 font-mono tracking-widest text-xs">{devCode}</span>
+            <span className="text-amber-400 font-mono tracking-widest text-xs">
+              {devCode}
+            </span>
           </div>
         )}
 
         {error && (
-          <div role="alert" className="mb-4 p-2.5 bg-red-950/40 border border-red-800 text-xs text-red-300">
+          <div
+            role="alert"
+            className="mb-4 p-2.5 bg-red-950/40 border border-red-800 text-xs text-red-300"
+          >
             {error}
           </div>
         )}
@@ -165,10 +176,19 @@ export function SecurityChallengeModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <div className="flex justify-between items-center text-[11px] text-stack-steel mb-1.5">
-              <label htmlFor="challenge-code-input" className="uppercase tracking-wider">
+              <label
+                htmlFor="challenge-code-input"
+                className="uppercase tracking-wider"
+              >
                 6-Digit Security Code
               </label>
-              <span className={remainingSeconds < 60 ? 'text-stack-red-hover' : 'text-stack-steel'}>
+              <span
+                className={
+                  remainingSeconds < 60
+                    ? 'text-stack-red-hover'
+                    : 'text-stack-steel'
+                }
+              >
                 Expires in {timeFormatted}
               </span>
             </div>
@@ -183,7 +203,9 @@ export function SecurityChallengeModal({
               disabled={isRequesting || isLoading}
               value={code}
               onChange={(e) => {
-                const numericOnly = e.target.value.replace(/\D/g, '').slice(0, 6);
+                const numericOnly = e.target.value
+                  .replace(/\D/g, '')
+                  .slice(0, 6);
                 setCode(numericOnly);
               }}
               placeholder="000000"

@@ -7,6 +7,18 @@ export interface StoredAttachment {
   updatedAt: number;
 }
 
+export interface WorkspaceLayoutSettings {
+  sidebarMode: 'expanded' | 'compact' | 'zen';
+  sidebarWidth: number;
+  expandedFolderIds: string[];
+}
+
+const DEFAULT_LAYOUT: WorkspaceLayoutSettings = {
+  sidebarMode: 'expanded',
+  sidebarWidth: 260,
+  expandedFolderIds: [],
+};
+
 const DB_VERSION = 1;
 const STORE_NOTES = 'notes';
 const STORE_FOLDERS = 'folders';
@@ -40,6 +52,7 @@ interface MemoryPartition {
 }
 
 const memoryPartitions = new Map<string, MemoryPartition>();
+const memoryLayouts = new Map<string, WorkspaceLayoutSettings>();
 
 function getMemoryPartition(sub: string): MemoryPartition {
   let partition = memoryPartitions.get(sub);
@@ -120,7 +133,57 @@ export const userWorkspaceStorage = {
    */
   resetMemoryForTesting(): void {
     memoryPartitions.clear();
+    memoryLayouts.clear();
     activeDbConnections.clear();
+  },
+
+  // -------------------------------------------------------------
+  // LAYOUT SETTINGS (Scoped by user sub)
+  // -------------------------------------------------------------
+  getLayoutSettings(sub: string): WorkspaceLayoutSettings {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const raw = localStorage.getItem(`stack_layout_${hashSub(sub)}`);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          return {
+            sidebarMode: ['expanded', 'compact', 'zen'].includes(parsed.sidebarMode)
+              ? parsed.sidebarMode
+              : DEFAULT_LAYOUT.sidebarMode,
+            sidebarWidth:
+              typeof parsed.sidebarWidth === 'number'
+                ? Math.max(220, Math.min(420, parsed.sidebarWidth))
+                : DEFAULT_LAYOUT.sidebarWidth,
+            expandedFolderIds: Array.isArray(parsed.expandedFolderIds)
+              ? parsed.expandedFolderIds
+              : [],
+          };
+        }
+      } catch {}
+    }
+    return memoryLayouts.get(sub) ?? { ...DEFAULT_LAYOUT };
+  },
+
+  saveLayoutSettings(
+    sub: string,
+    settings: Partial<WorkspaceLayoutSettings>
+  ): WorkspaceLayoutSettings {
+    const current = this.getLayoutSettings(sub);
+    const next: WorkspaceLayoutSettings = {
+      sidebarMode: settings.sidebarMode ?? current.sidebarMode,
+      sidebarWidth:
+        settings.sidebarWidth !== undefined
+          ? Math.max(220, Math.min(420, settings.sidebarWidth))
+          : current.sidebarWidth,
+      expandedFolderIds: settings.expandedFolderIds ?? current.expandedFolderIds,
+    };
+    memoryLayouts.set(sub, next);
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        localStorage.setItem(`stack_layout_${hashSub(sub)}`, JSON.stringify(next));
+      } catch {}
+    }
+    return next;
   },
 
   // -------------------------------------------------------------
@@ -142,19 +205,24 @@ export const userWorkspaceStorage = {
   },
 
   async saveNotes(sub: string, notes: Note[]): Promise<void> {
+    const prev = [...getMemoryPartition(sub).notes];
     getMemoryPartition(sub).notes = [...notes];
-    try {
-      const db = await openUserDb(sub);
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NOTES, 'readwrite');
-        const store = tx.objectStore(STORE_NOTES);
-        store.clear();
-        notes.forEach((note) => store.put(note));
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-      });
-    } catch {
-      // In-memory partition updated
+    if (typeof window !== 'undefined' && window.indexedDB) {
+      try {
+        const db = await openUserDb(sub);
+        await new Promise<void>((resolve, reject) => {
+          const tx = db.transaction(STORE_NOTES, 'readwrite');
+          const store = tx.objectStore(STORE_NOTES);
+          store.clear();
+          notes.forEach((note) => store.put(note));
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+          tx.onabort = () => reject(tx.error || new Error('Transaction aborted'));
+        });
+      } catch (err) {
+        getMemoryPartition(sub).notes = prev;
+        throw err;
+      }
     }
   },
 
@@ -177,19 +245,24 @@ export const userWorkspaceStorage = {
   },
 
   async saveFolders(sub: string, folders: Folder[]): Promise<void> {
+    const prev = [...getMemoryPartition(sub).folders];
     getMemoryPartition(sub).folders = [...folders];
-    try {
-      const db = await openUserDb(sub);
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_FOLDERS, 'readwrite');
-        const store = tx.objectStore(STORE_FOLDERS);
-        store.clear();
-        folders.forEach((folder) => store.put(folder));
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-      });
-    } catch {
-      // In-memory partition updated
+    if (typeof window !== 'undefined' && window.indexedDB) {
+      try {
+        const db = await openUserDb(sub);
+        await new Promise<void>((resolve, reject) => {
+          const tx = db.transaction(STORE_FOLDERS, 'readwrite');
+          const store = tx.objectStore(STORE_FOLDERS);
+          store.clear();
+          folders.forEach((folder) => store.put(folder));
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+          tx.onabort = () => reject(tx.error || new Error('Transaction aborted'));
+        });
+      } catch (err) {
+        getMemoryPartition(sub).folders = prev;
+        throw err;
+      }
     }
   },
 
@@ -238,7 +311,7 @@ export const userWorkspaceStorage = {
     };
     getMemoryPartition(sub).attachments.set(path, record);
 
-    try {
+    if (typeof window !== 'undefined' && window.indexedDB) {
       const db = await openUserDb(sub);
       return new Promise((resolve, reject) => {
         const tx = db.transaction(STORE_ATTACHMENTS, 'readwrite');
@@ -247,14 +320,12 @@ export const userWorkspaceStorage = {
         req.onsuccess = () => resolve();
         req.onerror = () => reject(req.error);
       });
-    } catch {
-      // In-memory partition updated
     }
   },
 
   async deleteAttachment(sub: string, path: string): Promise<void> {
     getMemoryPartition(sub).attachments.delete(path);
-    try {
+    if (typeof window !== 'undefined' && window.indexedDB) {
       const db = await openUserDb(sub);
       return new Promise((resolve, reject) => {
         const tx = db.transaction(STORE_ATTACHMENTS, 'readwrite');
@@ -263,8 +334,6 @@ export const userWorkspaceStorage = {
         req.onsuccess = () => resolve();
         req.onerror = () => reject(req.error);
       });
-    } catch {
-      // In-memory partition updated
     }
   },
 
@@ -290,7 +359,7 @@ export const userWorkspaceStorage = {
 
   async setMeta<T>(sub: string, key: string, value: T): Promise<void> {
     getMemoryPartition(sub).meta.set(key, value);
-    try {
+    if (typeof window !== 'undefined' && window.indexedDB) {
       const db = await openUserDb(sub);
       return new Promise((resolve, reject) => {
         const tx = db.transaction(STORE_META, 'readwrite');
@@ -299,8 +368,6 @@ export const userWorkspaceStorage = {
         req.onsuccess = () => resolve();
         req.onerror = () => reject(req.error);
       });
-    } catch {
-      // In-memory partition updated
     }
   },
 
@@ -311,16 +378,23 @@ export const userWorkspaceStorage = {
   async clearUserData(sub: string): Promise<void> {
     this.closeConnection(sub);
     memoryPartitions.delete(sub);
+    memoryLayouts.delete(sub);
 
-    if (typeof window !== 'undefined' && 'indexedDB' in window) {
-      const dbName = getWorkspaceDbName(sub);
-      await new Promise<void>((resolve) => {
-        const req = window.indexedDB.deleteDatabase(dbName);
-        req.onsuccess = () => resolve();
-        req.onerror = () => resolve();
-        req.onblocked = () => resolve();
-      });
+    if (typeof window !== 'undefined') {
+      if (window.localStorage) {
+        try {
+          localStorage.removeItem(`stack_layout_${hashSub(sub)}`);
+        } catch {}
+      }
+      if ('indexedDB' in window) {
+        const dbName = getWorkspaceDbName(sub);
+        await new Promise<void>((resolve) => {
+          const req = window.indexedDB.deleteDatabase(dbName);
+          req.onsuccess = () => resolve();
+          req.onerror = () => resolve();
+          req.onblocked = () => resolve();
+        });
+      }
     }
   },
 };
-

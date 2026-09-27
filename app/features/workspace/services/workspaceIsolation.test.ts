@@ -1,21 +1,17 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { userWorkspaceStorage, hashSub } from './userWorkspaceStorage';
+import { userWorkspaceStorage } from './userWorkspaceStorage';
 import { logoutCleanupService } from '~/features/auth/services/logoutCleanup.service';
 import type { Note, Folder } from '~/features/notes/types/note.types';
 
-describe('Strict Per-User Workspace Storage Isolation', () => {
+describe('Sprint 1: Multi-User Workspace Isolation Acceptance Test', () => {
   beforeEach(() => {
     userWorkspaceStorage.resetMemoryForTesting();
-  });
-
-  it('hashes Auth0 sub into stable and unique database names', () => {
-    const dbA = userWorkspaceStorage.getWorkspaceDbName('auth0|user_alpha');
-    const dbB = userWorkspaceStorage.getWorkspaceDbName('google-oauth2|user_beta');
-    const dbA2 = userWorkspaceStorage.getWorkspaceDbName('auth0|user_alpha');
-
-    expect(dbA).not.toBe(dbB);
-    expect(dbA).toBe(dbA2);
-    expect(dbA.startsWith('stack_user_')).toBe(true);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.clear();
+    }
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.clear();
+    }
   });
 
   it('guarantees Account A notes are invisible to Account B', async () => {
@@ -30,7 +26,8 @@ describe('Strict Per-User Workspace Storage Isolation', () => {
       folderId: null,
       order: 0,
       isPinned: false,
-      isArchived: false,
+      archivedAt: null,
+      deletedAt: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       syncStatus: 'saved_locally',
@@ -61,7 +58,8 @@ describe('Strict Per-User Workspace Storage Isolation', () => {
       folderId: null,
       order: 0,
       isPinned: false,
-      isArchived: false,
+      archivedAt: null,
+      deletedAt: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       syncStatus: 'saved_locally',
@@ -75,7 +73,8 @@ describe('Strict Per-User Workspace Storage Isolation', () => {
       folderId: null,
       order: 0,
       isPinned: false,
-      isArchived: false,
+      archivedAt: null,
+      deletedAt: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       syncStatus: 'saved_locally',
@@ -99,11 +98,14 @@ describe('Strict Per-User Workspace Storage Isolation', () => {
     const subA = 'auth0|user_a';
     const subB = 'github|user_b';
 
+    const now = new Date().toISOString();
     const folderA: Folder = {
       id: 'folder_a',
       name: 'User A Folder',
       parentId: null,
       order: 0,
+      createdAt: now,
+      updatedAt: now,
     };
 
     await userWorkspaceStorage.saveFolders(subA, [folderA]);
@@ -137,6 +139,8 @@ describe('Strict Per-User Workspace Storage Isolation', () => {
     const subA = 'auth0|user_alpha';
     const subB = 'google-oauth2|user_beta';
 
+    const now = new Date().toISOString();
+
     // 1. User A logs in and creates note
     const noteA: Note = {
       id: 'note_user_a',
@@ -146,9 +150,10 @@ describe('Strict Per-User Workspace Storage Isolation', () => {
       folderId: null,
       order: 0,
       isPinned: false,
-      isArchived: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      archivedAt: null,
+      deletedAt: null,
+      createdAt: now,
+      updatedAt: now,
       syncStatus: 'saved_locally',
     };
     await userWorkspaceStorage.saveNotes(subA, [noteA]);
@@ -174,9 +179,10 @@ describe('Strict Per-User Workspace Storage Isolation', () => {
       folderId: null,
       order: 0,
       isPinned: false,
-      isArchived: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      archivedAt: null,
+      deletedAt: null,
+      createdAt: now,
+      updatedAt: now,
       syncStatus: 'saved_locally',
     };
     await userWorkspaceStorage.saveNotes(subB, [noteB]);

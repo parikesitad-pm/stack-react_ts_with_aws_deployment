@@ -1,10 +1,15 @@
 import { useState, useMemo, useEffect, useRef, lazy, Suspense } from 'react';
+import { Archive, Trash2, RotateCcw } from 'lucide-react';
 import type {
   Note,
   Folder,
   NoteFilter,
 } from '~/features/notes/types/note.types';
 import { folderTreeService } from '~/features/notes/services/folderTree.service';
+import { workspaceMoveService } from '~/features/workspace/services/workspaceMove.service';
+import { workspaceOrderService } from '~/features/workspace/services/workspaceOrder.service';
+import { noteOrganizationService } from '~/features/notes/services/noteOrganization.service';
+import { tagService } from '~/features/tags/services/tag.service';
 import type { SyncState } from '~/components/atoms/StatusIndicator';
 import type { EditorMode } from '~/components/molecules/EditorModeSwitcher';
 import {
@@ -12,12 +17,14 @@ import {
   type SidebarLayoutMode,
 } from '~/components/organisms/AppSidebar';
 import { AppHeader } from '~/components/organisms/AppHeader';
+import { NoteTagEditor } from '~/features/tags/components/NoteTagEditor';
 import { MarkdownPreview } from '~/features/editor/components/MarkdownPreview';
 import { CommandPaletteModal } from '~/features/search/components/CommandPaletteModal';
 import { SettingsModal } from '~/features/settings/components/SettingsModal';
 import { ProfileModal } from '~/features/profile/components/ProfileModal';
 import { AttachmentDrawer } from '~/features/attachments/components/AttachmentDrawer';
 import { attachmentService } from '~/features/attachments/services/attachment.service';
+import { attachmentRepository } from '~/features/attachments/services/attachment.repository';
 import type { Attachment } from '~/features/attachments/types/attachment.types';
 import { DocumentOutline } from '~/features/editor/components/DocumentOutline';
 import { RecoveryDraftBanner } from '~/features/editor/components/RecoveryDraftBanner';
@@ -63,11 +70,7 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
   const [editorMode, setEditorMode] = useState<EditorMode>('split');
   const [layoutMode, setLayoutMode] = useState<SidebarLayoutMode>(() => {
     if (typeof window === 'undefined') return 'expanded';
-    const saved = localStorage.getItem('stack_sidebar_layout_mode');
-    if (saved === 'expanded' || saved === 'compact' || saved === 'zen') {
-      return saved;
-    }
-    return 'expanded';
+    return userWorkspaceStorage.getLayoutSettings(user.sub).sidebarMode;
   });
 
   const [syncState, setSyncState] = useState<SyncState>('saved_locally');
@@ -93,12 +96,13 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load user-scoped notes and folders from isolated IndexedDB
+  // Load user-scoped notes, folders, and layout settings from isolated storage
   useEffect(() => {
     // Purge legacy global un-scoped items from localStorage so they never leak
     if (typeof window !== 'undefined') {
       localStorage.removeItem('stack_notes');
       localStorage.removeItem('stack_folders');
+      localStorage.removeItem('stack_sidebar_layout_mode');
     }
 
     let isMounted = true;
@@ -111,12 +115,19 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
         setFolders(savedFolders || []);
         setIsDataLoaded(true);
 
+        const settings = userWorkspaceStorage.getLayoutSettings(user.sub);
+        setLayoutMode(settings.sidebarMode);
+
         if (savedNotes && savedNotes.length > 0) {
           const savedActive = sessionStorage.getItem('stack_active_note_id');
           if (savedActive && savedNotes.some((n) => n.id === savedActive)) {
             setActiveNoteId(savedActive);
           } else {
-            setActiveNoteId(savedNotes[0]?.id || '');
+            // Prefer active note over trash/archive
+            const activeOnly = savedNotes.filter(
+              (n) => !n.deletedAt && !n.archivedAt
+            );
+            setActiveNoteId(activeOnly[0]?.id || savedNotes[0]?.id || '');
           }
         } else {
           setActiveNoteId('');
@@ -129,20 +140,6 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
     };
   }, [user.sub]);
 
-  // Persist notes to user-scoped IndexedDB
-  useEffect(() => {
-    if (isDataLoaded) {
-      userWorkspaceStorage.saveNotes(user.sub, notes);
-    }
-  }, [notes, isDataLoaded, user.sub]);
-
-  // Persist folders to user-scoped IndexedDB
-  useEffect(() => {
-    if (isDataLoaded) {
-      userWorkspaceStorage.saveFolders(user.sub, folders);
-    }
-  }, [folders, isDataLoaded, user.sub]);
-
   // Track active note in session storage
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -154,213 +151,426 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
     }
   }, [activeNoteId]);
 
-  // Track layout mode in local storage
+  // Zen Mode Keyboard Shortcuts: Ctrl+\ or Cmd+\ toggles, Esc exits
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('stack_sidebar_layout_mode', layoutMode);
-    }
-  }, [layoutMode]);
-
-  // Check tour completion for new user
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const tourDone = localStorage.getItem(`stack_tour_completed_${user.sub}`);
-    if (!tourDone && isDataLoaded && notes.length === 0) {
-      setIsTourOpen(true);
-    }
-  }, [user.sub, isDataLoaded, notes.length]);
-
-  const activeNote = useMemo((): Note | null => {
-    if (notes.length === 0) return null;
-    const found = notes.find((n) => n.id === activeNoteId);
-    return found || notes[0] || null;
-  }, [notes, activeNoteId]);
-
-  const currentAttachments = useMemo(() => {
-    if (!activeNoteId) return [];
-    return attachments[activeNoteId] || [];
-  }, [attachments, activeNoteId]);
-
-  const { wordCount, charCount } = useMemo(() => {
-    const text = activeNote?.content || '';
-    const words = text.trim().length > 0 ? text.trim().split(/\s+/).length : 0;
-    return { wordCount: words, charCount: text.length };
-  }, [activeNote?.content]);
-
-  const readingTimeMinutes = useMemo(() => {
-    return Math.max(1, Math.ceil(wordCount / 200));
-  }, [wordCount]);
-
-  // Crash recovery check
-  useEffect(() => {
-    if (typeof window === 'undefined' || !activeNoteId) return;
-    try {
-      const raw = localStorage.getItem(`stack_draft_recovery_${activeNoteId}`);
-      if (raw) {
-        const parsed = JSON.parse(raw) as {
-          content: string;
-          timestamp: number;
-        };
-        if (parsed.content && parsed.content !== activeNote?.content) {
-          const diffSec = Math.max(
-            1,
-            Math.round((Date.now() - parsed.timestamp) / 1000)
-          );
-          setRecoveryDraft({
-            content: parsed.content,
-            timeDiffSeconds: diffSec,
-          });
-        }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === '\\') {
+        e.preventDefault();
+        setLayoutMode((prev) => {
+          const next = prev === 'zen' ? 'expanded' : 'zen';
+          userWorkspaceStorage.saveLayoutSettings(user.sub, { sidebarMode: next });
+          return next;
+        });
+      } else if (e.key === 'Escape' && layoutMode === 'zen') {
+        setLayoutMode('expanded');
+        userWorkspaceStorage.saveLayoutSettings(user.sub, { sidebarMode: 'expanded' });
       }
-    } catch {}
-  }, [activeNoteId, activeNote?.content]);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [layoutMode, user.sub]);
 
-  const handleUpdateNote = (
-    updatedFields: Partial<Omit<Note, 'id' | 'createdAt'>>
-  ) => {
+  const handleLayoutModeChange = (mode: SidebarLayoutMode) => {
+    setLayoutMode(mode);
+    userWorkspaceStorage.saveLayoutSettings(user.sub, { sidebarMode: mode });
+  };
+
+  // Find currently active note
+  const activeNote = useMemo(
+    () => notes.find((n) => n.id === activeNoteId),
+    [notes, activeNoteId]
+  );
+
+  const isNoteTrashed = activeNote ? noteOrganizationService.isNoteTrashed(activeNote) : false;
+  const isNoteArchived = activeNote ? noteOrganizationService.isNoteArchived(activeNote) : false;
+
+  // Extract all known active tags for auto-completion
+  const allKnownTags = useMemo(
+    () => tagService.extractActiveTags(notes).map((t) => t.tag),
+    [notes]
+  );
+
+  // Set active user sub for attachments
+  useEffect(() => {
+    attachmentRepository.setActiveSub(user.sub);
+  }, [user.sub]);
+
+  // Draft recovery check
+  useEffect(() => {
+    if (!activeNote || typeof window === 'undefined') return;
+
+    const draftKey = `stack_draft_recovery_${activeNote.id}`;
+    const saved = localStorage.getItem(draftKey);
+    if (!saved) {
+      setRecoveryDraft(null);
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(saved);
+      if (parsed.content && parsed.content !== activeNote.content) {
+        const timeDiff = Math.round((Date.now() - parsed.timestamp) / 1000);
+        setRecoveryDraft({
+          content: parsed.content,
+          timeDiffSeconds: timeDiff,
+        });
+      } else {
+        setRecoveryDraft(null);
+      }
+    } catch {
+      localStorage.removeItem(draftKey);
+      setRecoveryDraft(null);
+    }
+  }, [activeNote?.id]);
+
+  const handleRestoreDraft = () => {
+    if (!recoveryDraft || !activeNote) return;
+    handleUpdateNote({ content: recoveryDraft.content });
+    setRecoveryDraft(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(`stack_draft_recovery_${activeNote.id}`);
+    }
+  };
+
+  const handleDiscardDraft = () => {
     if (!activeNote) return;
+    setRecoveryDraft(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(`stack_draft_recovery_${activeNote.id}`);
+    }
+  };
 
-    setSyncState('syncing');
+  // Atomic Persistence Helpers with Optimistic Rollback
+  const applyNotesMutation = async (nextNotes: Note[]) => {
+    const prevNotes = notes;
+    setNotes(nextNotes);
+    try {
+      await userWorkspaceStorage.saveNotes(user.sub, nextNotes);
+    } catch (err) {
+      setNotes(prevNotes);
+      console.error('Notes mutation failed, rolling back:', err);
+      alert('Failed to save changes locally. Reverting to previous state.');
+    }
+  };
 
-    setNotes((prevNotes) =>
-      prevNotes.map((note) => {
-        if (note.id === activeNote.id) {
-          const updated = {
-            ...note,
+  const applyFoldersMutation = async (nextFolders: Folder[]) => {
+    const prevFolders = folders;
+    setFolders(nextFolders);
+    try {
+      await userWorkspaceStorage.saveFolders(user.sub, nextFolders);
+    } catch (err) {
+      setFolders(prevFolders);
+      console.error('Folders mutation failed, rolling back:', err);
+      alert('Failed to save folders locally. Reverting to previous state.');
+    }
+  };
+
+  const applyWorkspaceMutation = async (
+    nextNotes: Note[],
+    nextFolders: Folder[]
+  ) => {
+    const prevNotes = notes;
+    const prevFolders = folders;
+    setNotes(nextNotes);
+    setFolders(nextFolders);
+    try {
+      await Promise.all([
+        userWorkspaceStorage.saveNotes(user.sub, nextNotes),
+        userWorkspaceStorage.saveFolders(user.sub, nextFolders),
+      ]);
+    } catch (err) {
+      setNotes(prevNotes);
+      setFolders(prevFolders);
+      console.error('Workspace mutation failed, rolling back:', err);
+      alert('Failed to save workspace changes. Reverting to previous state.');
+    }
+  };
+
+  // Editor Note Updates with debounced auto-save
+  const handleUpdateNote = (updatedFields: Partial<Note>) => {
+    if (!activeNote || isNoteTrashed) return;
+
+    const nextNotes = notes.map((n) =>
+      n.id === activeNote.id
+        ? {
+            ...n,
             ...updatedFields,
             updatedAt: new Date().toISOString(),
-          };
-          if (typeof window !== 'undefined') {
-            localStorage.setItem(
-              `stack_draft_recovery_${note.id}`,
-              JSON.stringify({
-                content: updated.content,
-                timestamp: Date.now(),
-              })
-            );
           }
-          return updated;
-        }
-        return note;
-      })
+        : n
     );
 
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
-      setSyncState('saved_locally');
-      if (typeof window !== 'undefined' && activeNote) {
-        localStorage.removeItem(`stack_draft_recovery_${activeNote.id}`);
+    setNotes(nextNotes);
+    setSyncState('syncing');
+
+    if (typeof window !== 'undefined' && updatedFields.content !== undefined) {
+      localStorage.setItem(
+        `stack_draft_recovery_${activeNote.id}`,
+        JSON.stringify({
+          content: updatedFields.content,
+          timestamp: Date.now(),
+        })
+      );
+    }
+
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+    }
+
+    saveTimerRef.current = setTimeout(async () => {
+      try {
+        await userWorkspaceStorage.saveNotes(user.sub, nextNotes);
+        setSyncState('saved_locally');
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem(`stack_draft_recovery_${activeNote.id}`);
+        }
+      } catch (err) {
+        console.error('Failed to auto-save note:', err);
+        setSyncState('offline');
       }
     }, 700);
   };
 
   const handleCreateNote = (targetFolderId?: string) => {
+    const now = new Date().toISOString();
     const newNote: Note = {
       id: `note_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
       title: 'Untitled Note',
       content: '# Untitled Note\n\nStart writing Markdown notes without the noise…',
       tags: [],
       folderId: targetFolderId || null,
-      order: notes.length,
+      order: (notes.length + 1) * 100,
       isPinned: false,
-      isArchived: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      archivedAt: null,
+      deletedAt: null,
+      createdAt: now,
+      updatedAt: now,
       syncStatus: 'saved_locally',
     };
-    setNotes((prev) => [newNote, ...prev]);
+    applyNotesMutation([newNote, ...notes]);
     setActiveNoteId(newNote.id);
-  };
-
-  const handleDeleteNote = (noteId?: string) => {
-    const idToDelete = noteId || activeNote?.id;
-    if (!idToDelete) return;
-    setNotes((prev) => {
-      const filtered = prev.filter((n) => n.id !== idToDelete);
-      if (activeNoteId === idToDelete) {
-        setActiveNoteId(filtered[0]?.id || '');
-      }
-      return filtered;
-    });
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(`stack_draft_recovery_${idToDelete}`);
+    if (activeFilter === 'trash' || activeFilter === 'archive') {
+      setActiveFilter('all');
     }
   };
 
   const handleTogglePin = (noteId?: string) => {
     const idToPin = noteId || activeNote?.id;
     if (!idToPin) return;
-    setNotes((prev) =>
-      prev.map((n) => (n.id === idToPin ? { ...n, isPinned: !n.isPinned } : n))
+    const nextNotes = notes.map((n) =>
+      n.id === idToPin
+        ? { ...n, isPinned: !n.isPinned, updatedAt: new Date().toISOString() }
+        : n
     );
+    applyNotesMutation(nextNotes);
   };
 
   const handleMoveNoteToFolder = (noteId: string, folderId: string | null) => {
-    setNotes((prev) =>
-      prev.map((n) =>
-        n.id === noteId ? { ...n, folderId } : n
-      )
-    );
+    try {
+      const nextNotes = workspaceMoveService.moveNoteToFolder(noteId, folderId, notes);
+      applyNotesMutation(nextNotes);
+    } catch (err: unknown) {
+      alert((err as Error).message || 'Failed to move note');
+    }
   };
 
-  const handleReorderNote = (sourceNoteId: string, targetNoteId: string) => {
-    setNotes((prev) => {
-      const sourceIndex = prev.findIndex((n) => n.id === sourceNoteId);
-      const targetIndex = prev.findIndex((n) => n.id === targetNoteId);
-      if (sourceIndex === -1 || targetIndex === -1) return prev;
-
-      const items = [...prev];
-      const [moved] = items.splice(sourceIndex, 1);
-      if (!moved) return prev;
-
-      items.splice(targetIndex, 0, moved);
-      return items;
-    });
+  const handleReorderNote = (
+    sourceNoteId: string,
+    targetNoteId: string,
+    edge: 'before' | 'after'
+  ) => {
+    try {
+      const nextNotes = workspaceOrderService.reorderNotes(
+        sourceNoteId,
+        targetNoteId,
+        edge,
+        notes
+      );
+      applyNotesMutation(nextNotes);
+    } catch (err: unknown) {
+      alert((err as Error).message || 'Failed to reorder notes');
+    }
   };
 
   const handleMoveFolder = (folderId: string, targetParentId: string | null) => {
-    if (folderTreeService.wouldCreateCycle(folderId, targetParentId, folders)) {
-      return;
+    try {
+      const nextFolders = workspaceMoveService.moveFolder(
+        folderId,
+        targetParentId,
+        folders
+      );
+      applyFoldersMutation(nextFolders);
+    } catch (err: unknown) {
+      alert((err as Error).message || 'Cannot move folder');
     }
-    setFolders((prev) =>
-      prev.map((f) => (f.id === folderId ? { ...f, parentId: targetParentId } : f))
-    );
+  };
+
+  const handleReorderFolder = (
+    sourceFolderId: string,
+    targetFolderId: string,
+    edge: 'before' | 'after'
+  ) => {
+    try {
+      const nextFolders = workspaceOrderService.reorderFolders(
+        sourceFolderId,
+        targetFolderId,
+        edge,
+        folders
+      );
+      applyFoldersMutation(nextFolders);
+    } catch (err: unknown) {
+      alert((err as Error).message || 'Cannot reorder folder');
+    }
   };
 
   const handleCreateFolder = (name: string, parentId: string | null) => {
+    const validation = folderTreeService.validateFolderName(name, parentId, folders);
+    if (!validation.valid) {
+      alert(validation.error || 'Invalid folder name');
+      return;
+    }
+
+    const now = new Date().toISOString();
     const newFolder: Folder = {
       id: `folder_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-      name: name.trim() || 'New Folder',
+      name: name.trim(),
       parentId,
-      order: folders.length,
+      order: (folders.length + 1) * 100,
+      createdAt: now,
+      updatedAt: now,
     };
-    setFolders((prev) => [...prev, newFolder]);
+    applyFoldersMutation([...folders, newFolder]);
   };
 
   const handleRenameFolder = (id: string, name: string) => {
-    setFolders((prev) =>
-      prev.map((f) =>
-        f.id === id ? { ...f, name: name.trim() || f.name } : f
-      )
+    const folder = folders.find((f) => f.id === id);
+    if (!folder) return;
+    const validation = folderTreeService.validateFolderName(
+      name,
+      folder.parentId,
+      folders,
+      id
     );
+    if (!validation.valid) {
+      alert(validation.error || 'Invalid folder name');
+      return;
+    }
+    const nextFolders = folders.map((f) =>
+      f.id === id
+        ? { ...f, name: name.trim(), updatedAt: new Date().toISOString() }
+        : f
+    );
+    applyFoldersMutation(nextFolders);
   };
 
-  const handleDeleteFolder = (id: string) => {
-    setFolders((prev) => prev.filter((f) => f.id !== id && f.parentId !== id));
-    setNotes((prev) =>
-      prev.map((n) => (n.folderId === id ? { ...n, folderId: null } : n))
-    );
+  // Safe Folder Deletion preserving hierarchy: Reparents only direct notes and immediate children
+  const handleSafeDeleteFolder = (
+    folderId: string,
+    destinationFolderId: string | null
+  ) => {
+    try {
+      const { updatedNotes, updatedFolders } =
+        workspaceMoveService.reparentFolderContents(
+          folderId,
+          destinationFolderId,
+          folders,
+          notes
+        );
+      applyWorkspaceMutation(updatedNotes, updatedFolders);
+    } catch (err: unknown) {
+      alert((err as Error).message || 'Failed to delete folder');
+    }
+  };
+
+  // Lifecycle transitions: Archive, Trash, Restore, Delete Forever
+  const handleArchiveNote = (noteId: string) => {
+    const nextNotes = noteOrganizationService.archiveNote(noteId, notes);
+    applyNotesMutation(nextNotes);
+    if (activeNoteId === noteId && activeFilter !== 'archive') {
+      const remaining = noteOrganizationService.getActiveNotes(nextNotes);
+      setActiveNoteId(remaining[0]?.id || '');
+    }
+  };
+
+  const handleUnarchiveNote = (noteId: string) => {
+    const nextNotes = noteOrganizationService.unarchiveNote(noteId, notes);
+    applyNotesMutation(nextNotes);
+  };
+
+  const handleMoveToTrash = (noteId: string) => {
+    const nextNotes = noteOrganizationService.moveToTrash(noteId, notes);
+    applyNotesMutation(nextNotes);
+    if (activeNoteId === noteId && activeFilter !== 'trash') {
+      const remaining = noteOrganizationService.getActiveNotes(nextNotes);
+      setActiveNoteId(remaining[0]?.id || '');
+    }
+  };
+
+  const handleRestoreFromTrash = (noteId: string) => {
+    const nextNotes = noteOrganizationService.restoreFromTrash(noteId, notes);
+    applyNotesMutation(nextNotes);
+  };
+
+  const handlePermanentDelete = (noteId: string) => {
+    const nextNotes = noteOrganizationService.permanentlyDeleteNote(noteId, notes);
+    applyNotesMutation(nextNotes);
+    if (activeNoteId === noteId) {
+      const remaining =
+        activeFilter === 'trash'
+          ? noteOrganizationService.getTrashedNotes(nextNotes)
+          : noteOrganizationService.getActiveNotes(nextNotes);
+      setActiveNoteId(remaining[0]?.id || '');
+    }
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(`stack_draft_recovery_${noteId}`);
+    }
+  };
+
+  const handleEmptyTrash = () => {
+    if (
+      confirm(
+        'Permanently delete all notes in the trash? This action cannot be undone.'
+      )
+    ) {
+      const nextNotes = noteOrganizationService.emptyTrash(notes);
+      applyNotesMutation(nextNotes);
+      if (activeNote?.deletedAt != null) {
+        setActiveNoteId('');
+      }
+    }
+  };
+
+  // Tag mutation handlers
+  const handleAddTag = (noteId: string, rawTag: string) => {
+    const note = notes.find((n) => n.id === noteId);
+    if (!note) return;
+    try {
+      const updated = tagService.addTagToNote(note, rawTag);
+      const nextNotes = notes.map((n) => (n.id === noteId ? updated : n));
+      applyNotesMutation(nextNotes);
+    } catch (err: unknown) {
+      alert((err as Error).message || 'Invalid tag');
+    }
+  };
+
+  const handleRemoveTag = (noteId: string, rawTag: string) => {
+    const note = notes.find((n) => n.id === noteId);
+    if (!note) return;
+    const updated = tagService.removeTagFromNote(note, rawTag);
+    const nextNotes = notes.map((n) => (n.id === noteId ? updated : n));
+    applyNotesMutation(nextNotes);
   };
 
   const handleImportNotes = (imported: Note[]) => {
     if (!imported.length) return;
-    setNotes((prev) => [...imported, ...prev]);
+    const nextNotes = [...imported, ...notes];
+    applyNotesMutation(nextNotes);
     setActiveNoteId(imported[0]?.id || '');
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !activeNote) return;
+    if (!file || !activeNote || isNoteTrashed) return;
 
     try {
       setSyncState('syncing');
@@ -378,46 +588,38 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
       setSyncState('saved_locally');
     } catch (err) {
       console.error('Failed to attach file:', err);
-      setSyncState('offline');
+      setSyncState('saved_locally');
+      alert('Failed to process attachment.');
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  const handleRestoreDraft = () => {
-    if (!recoveryDraft || !activeNote) return;
-    handleUpdateNote({ content: recoveryDraft.content });
-    setRecoveryDraft(null);
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(`stack_draft_recovery_${activeNote.id}`);
-    }
-  };
-
-  const handleDiscardDraft = () => {
-    setRecoveryDraft(null);
-    if (typeof window !== 'undefined' && activeNote) {
-      localStorage.removeItem(`stack_draft_recovery_${activeNote.id}`);
-    }
-  };
+  const currentAttachments = activeNote ? attachments[activeNote.id] || [] : [];
+  const wordCount = activeNote?.content
+    ? activeNote.content.trim().split(/\s+/).filter(Boolean).length
+    : 0;
+  const charCount = activeNote?.content ? activeNote.content.length : 0;
+  const readingTimeMinutes = Math.max(1, Math.ceil(wordCount / 200));
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-stack-bg font-sans text-stack-bone select-none antialiased">
-      {/* Hidden file input */}
+    <div className="flex h-screen w-screen overflow-hidden bg-stack-bg font-sans text-stack-bone">
+      {/* Hidden File Input for Attachments */}
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*,application/pdf"
+        multiple
         className="hidden"
         onChange={handleFileUpload}
       />
 
-      {/* Main Sidebar (Desktop) */}
+      {/* Desktop Persistent Sidebar */}
       <AppSidebar
         notes={notes}
         folders={folders}
         activeNoteId={activeNoteId}
         onSelectNote={setActiveNoteId}
-        onCreateNote={handleCreateNote}
+        onCreateNote={() => handleCreateNote()}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenProfile={() => setIsProfileOpen(true)}
         onOpenImportExport={() => setIsImportExportOpen(true)}
@@ -426,13 +628,21 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
         activeFilter={activeFilter}
         onFilterChange={setActiveFilter}
         layoutMode={layoutMode}
-        onLayoutModeChange={setLayoutMode}
+        onLayoutModeChange={handleLayoutModeChange}
         onMoveNoteToFolder={handleMoveNoteToFolder}
         onReorderNote={handleReorderNote}
         onMoveFolder={handleMoveFolder}
+        onReorderFolder={handleReorderFolder}
         onCreateFolder={handleCreateFolder}
         onRenameFolder={handleRenameFolder}
-        onDeleteFolder={handleDeleteFolder}
+        onSafeDeleteFolder={handleSafeDeleteFolder}
+        onTogglePin={handleTogglePin}
+        onArchiveNote={handleArchiveNote}
+        onUnarchiveNote={handleUnarchiveNote}
+        onTrashNote={handleMoveToTrash}
+        onRestoreNote={handleRestoreFromTrash}
+        onPermanentDeleteNote={handlePermanentDelete}
+        onEmptyTrash={handleEmptyTrash}
         user={user}
         onSignOut={onSignOut}
         canInstallPwa={isInstallable}
@@ -480,15 +690,26 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
               }}
               syncState={syncState}
               activeFilter={activeFilter}
-              onFilterChange={setActiveFilter}
+              onFilterChange={(f) => {
+                setActiveFilter(f);
+                setIsMobileSidebarOpen(false);
+              }}
               layoutMode="expanded"
               onLayoutModeChange={() => {}}
               onMoveNoteToFolder={handleMoveNoteToFolder}
               onReorderNote={handleReorderNote}
               onMoveFolder={handleMoveFolder}
+              onReorderFolder={handleReorderFolder}
               onCreateFolder={handleCreateFolder}
               onRenameFolder={handleRenameFolder}
-              onDeleteFolder={handleDeleteFolder}
+              onSafeDeleteFolder={handleSafeDeleteFolder}
+              onTogglePin={handleTogglePin}
+              onArchiveNote={handleArchiveNote}
+              onUnarchiveNote={handleUnarchiveNote}
+              onTrashNote={handleMoveToTrash}
+              onRestoreNote={handleRestoreFromTrash}
+              onPermanentDeleteNote={handlePermanentDelete}
+              onEmptyTrash={handleEmptyTrash}
               user={user}
               onSignOut={onSignOut}
               canInstallPwa={isInstallable}
@@ -503,7 +724,7 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Zen Mode Exit Button */}
         {layoutMode === 'zen' && (
-          <ZenModeExitButton onExit={() => setLayoutMode('expanded')} />
+          <ZenModeExitButton onExit={() => handleLayoutModeChange('expanded')} />
         )}
 
         {notes.length > 0 && activeNote ? (
@@ -515,7 +736,7 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
               tags={activeNote.tags || []}
               isPinned={activeNote.isPinned || false}
               onTogglePin={() => handleTogglePin(activeNote.id)}
-              onDeleteNote={() => handleDeleteNote(activeNote.id)}
+              onDeleteNote={() => handleMoveToTrash(activeNote.id)}
               editorMode={editorMode}
               onModeChange={setEditorMode}
               onToggleMobileSidebar={() => setIsMobileSidebarOpen(true)}
@@ -532,6 +753,63 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
               charCount={charCount}
               readingTimeMinutes={readingTimeMinutes}
             />
+
+            {/* Note Status Banner for Archive & Trash */}
+            {isNoteTrashed && (
+              <div className="flex items-center justify-between bg-red-950/70 border-b border-red-800/60 px-4 py-2 font-mono text-xs text-red-200">
+                <div className="flex items-center gap-2">
+                  <Trash2 className="h-4 w-4 text-red-400" />
+                  <span>This note is in the Trash. Editing is disabled.</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleRestoreFromTrash(activeNote.id)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-stack-metal hover:bg-stack-steel/30 text-stack-bone transition-colors"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    <span>Restore</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePermanentDelete(activeNote.id)}
+                    className="px-2.5 py-1 rounded bg-red-800 hover:bg-red-700 text-white font-medium transition-colors"
+                  >
+                    Delete Forever
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {isNoteArchived && (
+              <div className="flex items-center justify-between bg-stack-metal/40 border-b border-stack-metal/70 px-4 py-2 font-mono text-xs text-stack-silver">
+                <div className="flex items-center gap-2">
+                  <Archive className="h-4 w-4 text-stack-steel" />
+                  <span>This note is archived.</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleUnarchiveNote(activeNote.id)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-stack-metal hover:bg-stack-steel/30 text-stack-bone transition-colors"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  <span>Unarchive</span>
+                </button>
+              </div>
+            )}
+
+            {/* Active Note Tag Editor Bar */}
+            {!isNoteTrashed && (
+              <div className="border-b border-stack-metal/40 bg-stack-surface/60 px-3 py-1 flex items-center justify-between">
+                <NoteTagEditor
+                  tags={activeNote.tags || []}
+                  allKnownTags={allKnownTags}
+                  onAddTag={(tag) => handleAddTag(activeNote.id, tag)}
+                  onRemoveTag={(tag) => handleRemoveTag(activeNote.id, tag)}
+                  readOnly={isNoteArchived}
+                />
+              </div>
+            )}
 
             {/* Crash recovery notification */}
             {recoveryDraft && (
@@ -677,7 +955,7 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
       <ImportExportModal
         isOpen={isImportExportOpen}
         onClose={() => setIsImportExportOpen(false)}
-        activeNote={activeNote}
+        activeNote={activeNote ?? null}
         allNotes={notes}
         allAttachments={Object.values(attachments).flat()}
         onImportNotes={handleImportNotes}

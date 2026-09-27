@@ -116,3 +116,13 @@ For developers using browsers where the standard Chrome/Firefox extension is una
 - **Device PIN Scope**: 6-digit PIN is purely a local browser convenience lock using Web Crypto PBKDF2/SHA-256. It does not encrypt notes or replace Auth0 authentication.
 - **Avatar Storage**: S3 presigned URLs are never stored in profile JSON (they expire). Profile persists `avatarKey` and `avatarVersion`, resolving URLs at runtime.
 
+---
+
+## Workspace Organization Invariants
+
+- **Hierarchy Preservation**: Safe folder deletion reparents ONLY direct notes and immediate child folders to the chosen destination. Grandchildren and nested subtrees are preserved and never flattened. The destination folder cannot be within the deleted folder's subtree.
+- **Note State Precedence**: `deletedAt != null` (Trash) takes absolute precedence over `archivedAt != null` (Archive). Notes in Trash or Archive are strictly excluded from All Notes, folder lists, and search queries. Restoring a note from Trash restores it to its previous state (Archive or Active).
+- **Separation of Folders vs Tags**: A Folder represents "where this note lives" (0 or 1 per note). A Tag represents "what this note is about" (0 or more per note). Active tag counts are derived exclusively from active notes.
+- **Partitioned User Layout**: Layout preferences (`sidebarMode`, `sidebarWidth`, `expandedFolderIds`) are isolated strictly per-user via `stack_layout_{hashSub(sub)}` with memory fallback. Unpartitioned global keys are forbidden.
+- **Persistence Atomicity**: UI mutations employ optimistic updates backed by rollback on IndexedDB failure.
+

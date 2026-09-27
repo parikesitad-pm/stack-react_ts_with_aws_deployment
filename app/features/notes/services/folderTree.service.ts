@@ -2,6 +2,49 @@ import type { Folder } from '../types/note.types';
 
 export const folderTreeService = {
   /**
+   * Validates a folder name according to STACK rules:
+   * - 1 to 80 characters (trimmed)
+   * - Prohibits '/' and control characters
+   * - Prohibits duplicate sibling folder names under the same parentId
+   */
+  validateFolderName(
+    name: string,
+    parentId: string | null,
+    folders: Folder[],
+    currentFolderId?: string
+  ): { valid: boolean; error?: string } {
+    const clean = name.trim();
+    if (clean.length === 0) {
+      return { valid: false, error: 'Folder name cannot be empty.' };
+    }
+    if (clean.length > 80) {
+      return { valid: false, error: 'Folder name cannot exceed 80 characters.' };
+    }
+    if (clean.includes('/')) {
+      return { valid: false, error: "Folder name cannot contain '/'." };
+    }
+    // eslint-disable-next-line no-control-regex
+    if (/[\u0000-\u001F\u007F-\u009F]/.test(clean)) {
+      return { valid: false, error: 'Folder name cannot contain control characters.' };
+    }
+
+    const isDuplicate = folders.some(
+      (f) =>
+        f.parentId === parentId &&
+        f.id !== currentFolderId &&
+        f.name.toLowerCase() === clean.toLowerCase()
+    );
+    if (isDuplicate) {
+      return {
+        valid: false,
+        error: `A folder named "${clean}" already exists in this location.`,
+      };
+    }
+
+    return { valid: true };
+  },
+
+  /**
    * Check if setting `targetParentId` as parent of `folderId` would introduce a cycle.
    * e.g., Folder A -> Folder B -> Folder A is strictly prevented.
    */
@@ -48,6 +91,17 @@ export const folderTreeService = {
     }
 
     return descendants;
+  },
+
+  /**
+   * Returns a Set containing folderId itself plus all its descendant IDs.
+   * Used to validate destinations and prevent reparenting into a deleted subtree.
+   */
+  getFolderSubtreeIds(folderId: string, folders: Folder[]): Set<string> {
+    const subtree = new Set<string>([folderId]);
+    const descendants = this.getFolderDescendants(folderId, folders);
+    descendants.forEach((id) => subtree.add(id));
+    return subtree;
   },
 
   /**

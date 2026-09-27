@@ -1,6 +1,9 @@
 import type { UserProfile } from '../schemas/username.schema';
 import { normalizeUsername, usernameSchema } from '../schemas/username.schema';
-import type { OnboardingPayload, UsernameAvailabilityResult } from './identity.service';
+import type {
+  OnboardingPayload,
+  UsernameAvailabilityResult,
+} from './identity.service';
 
 /**
  * Storage key for local development simulation when VITE_API_BASE_URL is not set.
@@ -130,9 +133,18 @@ export class DevMockIdentityAdapter {
     const currentProfile = userItem.data as unknown as UserProfile;
     const updated: UserProfile = {
       ...currentProfile,
-      fullName: partial.fullName !== undefined ? partial.fullName : currentProfile.fullName,
-      avatarKey: partial.avatarKey !== undefined ? partial.avatarKey : currentProfile.avatarKey,
-      avatarVersion: partial.avatarVersion !== undefined ? partial.avatarVersion : currentProfile.avatarVersion,
+      fullName:
+        partial.fullName !== undefined
+          ? partial.fullName
+          : currentProfile.fullName,
+      avatarKey:
+        partial.avatarKey !== undefined
+          ? partial.avatarKey
+          : currentProfile.avatarKey,
+      avatarVersion:
+        partial.avatarVersion !== undefined
+          ? partial.avatarVersion
+          : currentProfile.avatarVersion,
       updatedAt: new Date().toISOString(),
     };
 
@@ -147,7 +159,8 @@ export class DevMockIdentityAdapter {
     challengeId: string,
     challengeCode: string
   ): Promise<UserProfile> {
-    const { MockSecurityChallengeAdapter } = await import('./securityChallenge.service');
+    const { MockSecurityChallengeAdapter } =
+      await import('./securityChallenge.service');
     // 1. Verify and consume the email security challenge
     await MockSecurityChallengeAdapter.verifyAndConsume(
       challengeId,
@@ -222,7 +235,8 @@ export class DevMockIdentityAdapter {
     challengeId: string,
     challengeCode: string
   ): Promise<UserProfile> {
-    const { MockSecurityChallengeAdapter } = await import('./securityChallenge.service');
+    const { MockSecurityChallengeAdapter } =
+      await import('./securityChallenge.service');
     await MockSecurityChallengeAdapter.verifyAndConsume(
       challengeId,
       challengeCode,
@@ -294,7 +308,8 @@ export class DevMockIdentityAdapter {
       throw new Error('USERNAME_CONFIRMATION_MISMATCH');
     }
 
-    const { MockSecurityChallengeAdapter } = await import('./securityChallenge.service');
+    const { MockSecurityChallengeAdapter } =
+      await import('./securityChallenge.service');
     await MockSecurityChallengeAdapter.verifyAndConsume(
       challengeId,
       challengeCode,
@@ -304,13 +319,10 @@ export class DevMockIdentityAdapter {
 
     const claimPk = `USERNAME#${currentProfile.username}`;
     // Remove profile and username claim
-    const remaining = items.filter(
-      (i) => i.PK !== userPk && i.PK !== claimPk
-    );
+    const remaining = items.filter((i) => i.PK !== userPk && i.PK !== claimPk);
     this.saveItems(remaining);
     return true;
   }
-
 
   private static loadItems(): MockDynamoItem[] {
     if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {

@@ -9,27 +9,40 @@ export interface FolderTreeProps {
   folders: Folder[];
   notes: Note[];
   activeNoteId: string;
+  expandedFolderIds: string[];
+  onToggleExpand: (folderId: string) => void;
   onSelectNote: (noteId: string) => void;
   onMoveNoteToFolder: (noteId: string, targetFolderId: string | null) => void;
   onMoveFolder: (folderId: string, targetParentId: string | null) => void;
+  onReorderFolder?: (
+    sourceFolderId: string,
+    targetFolderId: string,
+    edge: 'before' | 'after'
+  ) => void;
   onCreateFolder: (name: string, parentId: string | null) => void;
   onRenameFolder: (folderId: string, newName: string) => void;
-  onDeleteFolder: (folderId: string) => void;
+  onDeleteFolder: (folder: Folder) => void;
+  onMoveFolderModal?: (folder: Folder) => void;
 }
 
 export function FolderTree({
   folders,
   notes,
   activeNoteId,
+  expandedFolderIds,
+  onToggleExpand,
   onSelectNote,
   onMoveNoteToFolder,
   onMoveFolder,
+  onReorderFolder,
   onCreateFolder,
   onRenameFolder,
   onDeleteFolder,
+  onMoveFolderModal,
 }: FolderTreeProps) {
   const [isCreatingRoot, setIsCreatingRoot] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+  const [creationError, setCreationError] = useState<string | null>(null);
   const rootDropRef = useRef<HTMLDivElement | null>(null);
   const [isOverRoot, setIsOverRoot] = useState(false);
 
@@ -63,24 +76,38 @@ export function FolderTree({
 
   const handleCreateRootSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newFolderName.trim()) {
-      onCreateFolder(newFolderName.trim(), null);
-      setNewFolderName('');
-      setIsCreatingRoot(false);
+    const cleanName = newFolderName.trim();
+    const validation = folderTreeService.validateFolderName(cleanName, null, folders);
+    if (!validation.valid) {
+      setCreationError(validation.error ?? 'Invalid name');
+      return;
     }
+
+    onCreateFolder(cleanName, null);
+    setNewFolderName('');
+    setCreationError(null);
+    setIsCreatingRoot(false);
   };
 
   const handleCreateChild = (parentId: string) => {
     const childName = prompt('New folder name:');
-    if (childName?.trim()) {
-      onCreateFolder(childName.trim(), parentId);
+    if (!childName) return;
+    const clean = childName.trim();
+    const validation = folderTreeService.validateFolderName(clean, parentId, folders);
+    if (!validation.valid) {
+      alert(validation.error ?? 'Invalid folder name');
+      return;
+    }
+    onCreateFolder(clean, parentId);
+    if (!expandedFolderIds.includes(parentId)) {
+      onToggleExpand(parentId);
     }
   };
 
   return (
     <div
       ref={rootDropRef}
-      className={`flex flex-col py-2 transition-colors ${
+      className={`flex flex-col py-1 transition-colors rounded ${
         isOverRoot ? 'bg-stack-metal/30 ring-1 ring-stack-silver/30' : ''
       }`}
     >
@@ -88,8 +115,11 @@ export function FolderTree({
         <span>Folders</span>
         <button
           type="button"
-          onClick={() => setIsCreatingRoot((prev) => !prev)}
-          title="Create Folder"
+          onClick={() => {
+            setIsCreatingRoot((prev) => !prev);
+            setCreationError(null);
+          }}
+          title="Create Top-Level Folder"
           className="p-1 rounded text-stack-steel hover:text-stack-bone hover:bg-stack-metal transition-colors"
         >
           <FolderPlus className="h-3.5 w-3.5" />
@@ -97,48 +127,47 @@ export function FolderTree({
       </div>
 
       {isCreatingRoot && (
-        <form onSubmit={handleCreateRootSubmit} className="px-3 py-1">
+        <form onSubmit={handleCreateRootSubmit} className="px-3 py-1 space-y-1">
           <input
             type="text"
             autoFocus
-            placeholder="Folder name..."
             value={newFolderName}
-            onChange={(e) => setNewFolderName(e.target.value)}
-            onBlur={() => {
-              if (newFolderName.trim()) {
-                onCreateFolder(newFolderName.trim(), null);
-                setNewFolderName('');
-              }
-              setIsCreatingRoot(false);
+            onChange={(e) => {
+              setNewFolderName(e.target.value);
+              setCreationError(null);
             }}
-            className="w-full bg-stack-surface-raised border border-stack-steel/50 px-2 py-1 text-xs text-stack-bone rounded focus:outline-none focus:ring-1 focus:ring-stack-silver"
+            placeholder="Folder name"
+            maxLength={80}
+            className="w-full bg-stack-surface border border-stack-steel/50 px-2 py-1 text-xs text-stack-bone rounded focus:outline-none focus:border-stack-silver font-mono"
           />
+          {creationError && (
+            <div className="text-[10px] text-stack-red-hover font-mono">{creationError}</div>
+          )}
         </form>
       )}
 
-      {rootFolders.length === 0 && !isCreatingRoot ? (
-        <div className="px-3 py-1 text-[11px] font-mono text-stack-steel/60 italic">
-          No folders yet
-        </div>
-      ) : (
-        <div className="space-y-0.5 px-1">
-          {rootFolders.map((folder) => (
-            <FolderItem
-              key={folder.id}
-              folder={folder}
-              allFolders={folders}
-              notes={notes}
-              activeNoteId={activeNoteId}
-              onSelectNote={onSelectNote}
-              onMoveNoteToFolder={onMoveNoteToFolder}
-              onMoveFolder={onMoveFolder}
-              onRenameFolder={onRenameFolder}
-              onDeleteFolder={onDeleteFolder}
-              onCreateChildFolder={handleCreateChild}
-            />
-          ))}
-        </div>
-      )}
+      <div className="space-y-0.5 mt-0.5">
+        {rootFolders.map((folder) => (
+          <FolderItem
+            key={folder.id}
+            folder={folder}
+            allFolders={folders}
+            notes={notes}
+            activeNoteId={activeNoteId}
+            depth={0}
+            expandedFolderIds={expandedFolderIds}
+            onToggleExpand={onToggleExpand}
+            onSelectNote={onSelectNote}
+            onMoveNoteToFolder={onMoveNoteToFolder}
+            onMoveFolder={onMoveFolder}
+            onReorderFolder={onReorderFolder}
+            onRenameFolder={onRenameFolder}
+            onDeleteFolder={onDeleteFolder}
+            onMoveFolderModal={onMoveFolderModal}
+            onCreateChildFolder={handleCreateChild}
+          />
+        ))}
+      </div>
     </div>
   );
 }

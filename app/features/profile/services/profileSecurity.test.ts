@@ -21,7 +21,8 @@ function createTestNote(id: string, title: string, content: string): Note {
     folderId: null,
     order: 0,
     isPinned: false,
-    isArchived: false,
+    archivedAt: null,
+    deletedAt: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     syncStatus: 'saved_locally',
@@ -79,14 +80,21 @@ describe('Sprint 2: Profile, Account & Security Contracts', () => {
       // Setup notes in Alice's isolated workspace
       const dbBefore = getWorkspaceDbName(SUB_ALICE);
       await userWorkspaceStorage.saveNotes(SUB_ALICE, [
-        createTestNote('note_1', 'Top Secret Notes', '# Confidential\nDo not share.'),
+        createTestNote(
+          'note_1',
+          'Top Secret Notes',
+          '# Confidential\nDo not share.'
+        ),
       ]);
 
       // Claim original username
       await IdentityService.claimOnboarding({ username: 'alice' }, SUB_ALICE);
 
       // Verify Bob cannot claim 'alice'
-      const availAlice = await IdentityService.checkAvailability('alice', SUB_BOB);
+      const availAlice = await IdentityService.checkAvailability(
+        'alice',
+        SUB_BOB
+      );
       expect(availAlice.available).toBe(false);
 
       // Request email challenge for changing username
@@ -109,7 +117,10 @@ describe('Sprint 2: Profile, Account & Security Contracts', () => {
       expect(updatedProfile.username).toBe('alice_renamed');
 
       // INVARIANT 1: Old handle 'alice' must be released and available again
-      const availOld = await IdentityService.checkAvailability('alice', SUB_BOB);
+      const availOld = await IdentityService.checkAvailability(
+        'alice',
+        SUB_BOB
+      );
       expect(availOld.available).toBe(true);
 
       // Bob claims released handle 'alice'
@@ -248,9 +259,9 @@ describe('Sprint 2: Profile, Account & Security Contracts', () => {
       expect(DeviceLockService.isSessionLocked(SUB_ALICE)).toBe(true);
 
       // Rejects wrong PIN
-      await expect(DeviceLockService.verifyPin(SUB_ALICE, '999999')).rejects.toThrow(
-        'Incorrect PIN.'
-      );
+      await expect(
+        DeviceLockService.verifyPin(SUB_ALICE, '999999')
+      ).rejects.toThrow('Incorrect PIN.');
       expect(DeviceLockService.isSessionLocked(SUB_ALICE)).toBe(true);
 
       // Unlocks with correct PIN
@@ -263,25 +274,29 @@ describe('Sprint 2: Profile, Account & Security Contracts', () => {
       await DeviceLockService.setPin(SUB_ALICE, '654321', 5);
 
       for (let i = 0; i < 4; i++) {
-        await expect(DeviceLockService.verifyPin(SUB_ALICE, '000000')).rejects.toThrow(
-          'Incorrect PIN.'
-        );
+        await expect(
+          DeviceLockService.verifyPin(SUB_ALICE, '000000')
+        ).rejects.toThrow('Incorrect PIN.');
       }
 
       // 5th failed attempt triggers temporary cooldown
-      await expect(DeviceLockService.verifyPin(SUB_ALICE, '000000')).rejects.toThrow(
-        'Incorrect PIN.'
-      );
+      await expect(
+        DeviceLockService.verifyPin(SUB_ALICE, '000000')
+      ).rejects.toThrow('Incorrect PIN.');
 
       // Next attempt is blocked by cooldown timer
-      await expect(DeviceLockService.verifyPin(SUB_ALICE, '654321')).rejects.toThrow(
-        /Device temporarily locked/
-      );
+      await expect(
+        DeviceLockService.verifyPin(SUB_ALICE, '654321')
+      ).rejects.toThrow(/Device temporarily locked/);
     });
 
     it('allows safe PIN reset via reauthentication without destroying workspace notes', async () => {
       await userWorkspaceStorage.saveNotes(SUB_ALICE, [
-        createTestNote('persistent_note', 'Preserved Note', 'This note must survive PIN resets.'),
+        createTestNote(
+          'persistent_note',
+          'Preserved Note',
+          'This note must survive PIN resets.'
+        ),
       ]);
 
       await DeviceLockService.setPin(SUB_ALICE, '112233');

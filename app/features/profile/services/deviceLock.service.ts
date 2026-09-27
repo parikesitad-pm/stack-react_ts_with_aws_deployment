@@ -28,7 +28,13 @@ export class DeviceLockService {
         if (raw) return JSON.parse(raw);
       } catch {}
     }
-    return this.memoryStore.get(sub) || { enabled: false, autoLockMinutes: 5, failedAttempts: 0 };
+    return (
+      this.memoryStore.get(sub) || {
+        enabled: false,
+        autoLockMinutes: 5,
+        failedAttempts: 0,
+      }
+    );
   }
 
   static saveConfig(sub: string, config: DeviceLockConfig): void {
@@ -180,7 +186,10 @@ export class DeviceLockService {
       config.failedAttempts += 1;
       if (config.failedAttempts >= 5) {
         // Cooldown: 30 seconds for 5 attempts, exponential thereafter
-        const penaltyMs = Math.min(30000 * Math.pow(2, config.failedAttempts - 5), 300000);
+        const penaltyMs = Math.min(
+          30000 * Math.pow(2, config.failedAttempts - 5),
+          300000
+        );
         config.lockedUntil = now + penaltyMs;
       }
       this.saveConfig(sub, config);
@@ -236,4 +245,3 @@ export class DeviceLockService {
     this.sessionMemory.clear();
   }
 }
-

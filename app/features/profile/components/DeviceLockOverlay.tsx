@@ -57,7 +57,10 @@ export function DeviceLockOverlay({
           <div className="w-12 h-12 rounded-full border border-stack-metal bg-stack-surface-raised flex items-center justify-center text-stack-red-slate">
             <Lock className="w-5 h-5" />
           </div>
-          <h2 id="lock-title" className="text-base font-bold tracking-tight text-stack-bone">
+          <h2
+            id="lock-title"
+            className="text-base font-bold tracking-tight text-stack-bone"
+          >
             DEVICE LOCKED
           </h2>
           <p className="text-xs text-stack-steel leading-relaxed">
@@ -89,7 +92,9 @@ export function DeviceLockOverlay({
               maxLength={6}
               value={pin}
               onChange={(e) => {
-                const numericOnly = e.target.value.replace(/\D/g, '').slice(0, 6);
+                const numericOnly = e.target.value
+                  .replace(/\D/g, '')
+                  .slice(0, 6);
                 setPin(numericOnly);
               }}
               placeholder="••••••"

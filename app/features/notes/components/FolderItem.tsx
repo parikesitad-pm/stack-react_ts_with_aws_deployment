@@ -9,9 +9,11 @@ import {
   Edit2,
   Trash2,
   FileText,
+  FolderInput,
 } from 'lucide-react';
 import type { Folder, Note } from '../types/note.types';
 import { folderTreeService } from '../services/folderTree.service';
+import { noteOrganizationService } from '../services/noteOrganization.service';
 import {
   draggable,
   dropTargetForElements,
@@ -23,11 +25,19 @@ export interface FolderItemProps {
   notes: Note[];
   activeNoteId: string;
   depth?: number;
+  expandedFolderIds: string[];
+  onToggleExpand: (folderId: string) => void;
   onSelectNote: (noteId: string) => void;
   onMoveNoteToFolder: (noteId: string, targetFolderId: string | null) => void;
   onMoveFolder: (folderId: string, targetParentId: string | null) => void;
+  onReorderFolder?: (
+    sourceFolderId: string,
+    targetFolderId: string,
+    edge: 'before' | 'after'
+  ) => void;
   onRenameFolder: (folderId: string, newName: string) => void;
-  onDeleteFolder: (folderId: string) => void;
+  onDeleteFolder: (folder: Folder) => void;
+  onMoveFolderModal?: (folder: Folder) => void;
   onCreateChildFolder: (parentId: string) => void;
 }
 
@@ -37,27 +47,44 @@ export function FolderItem({
   notes,
   activeNoteId,
   depth = 0,
+  expandedFolderIds,
+  onToggleExpand,
   onSelectNote,
   onMoveNoteToFolder,
   onMoveFolder,
+  onReorderFolder,
   onRenameFolder,
   onDeleteFolder,
+  onMoveFolderModal,
   onCreateChildFolder,
 }: FolderItemProps) {
-  const [isExpanded, setIsExpanded] = useState(folder.isExpanded ?? true);
+  const isExpanded = expandedFolderIds.includes(folder.id);
   const [isEditing, setIsEditing] = useState(false);
   const [nameInput, setNameInput] = useState(folder.name);
   const [showMenu, setShowMenu] = useState(false);
-  const [isDraggedOver, setIsDraggedOver] = useState(false);
+  const [dropState, setDropState] = useState<'before' | 'after' | 'inside' | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   const elementRef = useRef<HTMLDivElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
-  const childFolders = folderTreeService.getFolderChildren(
-    folder.id,
-    allFolders
+  const childFolders = folderTreeService.getFolderChildren(folder.id, allFolders);
+  // Strictly filter to active notes only (archive and trash excluded)
+  const folderNotes = notes.filter(
+    (n) => n.folderId === folder.id && noteOrganizationService.isNoteActive(n)
   );
-  const folderNotes = notes.filter((n) => n.folderId === folder.id);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    if (showMenu) {
+      document.addEventListener('mousedown', handleOutsideClick);
+      return () => document.removeEventListener('mousedown', handleOutsideClick);
+    }
+  }, [showMenu]);
 
   useEffect(() => {
     const el = elementRef.current;
@@ -79,7 +106,7 @@ export function FolderItem({
         if (data.type === 'folder') {
           const sourceFolderId = data.folderId as string;
           if (sourceFolderId === folder.id) return false;
-          // Block if it creates a cycle
+          // Disallow dropping folder into its own subtree
           return !folderTreeService.wouldCreateCycle(
             sourceFolderId,
             folder.id,
@@ -88,24 +115,63 @@ export function FolderItem({
         }
         return false;
       },
-      onDragEnter: () => setIsDraggedOver(true),
-      onDragLeave: () => setIsDraggedOver(false),
-      onDrop: ({ source }) => {
-        setIsDraggedOver(false);
+      onDragEnter: ({ source, location }) => {
+        const rect = el.getBoundingClientRect();
+        const y = location.current.input.clientY - rect.top;
+        const h = rect.height;
+        if (source.data.type === 'folder') {
+          if (y < h * 0.25) setDropState('before');
+          else if (y > h * 0.75) setDropState('after');
+          else setDropState('inside');
+        } else {
+          setDropState('inside');
+        }
+      },
+      onDrag: ({ source, location }) => {
+        const rect = el.getBoundingClientRect();
+        const y = location.current.input.clientY - rect.top;
+        const h = rect.height;
+        if (source.data.type === 'folder') {
+          if (y < h * 0.25) setDropState('before');
+          else if (y > h * 0.75) setDropState('after');
+          else setDropState('inside');
+        } else {
+          setDropState('inside');
+        }
+      },
+      onDragLeave: () => setDropState(null),
+      onDrop: ({ source, location }) => {
+        const rect = el.getBoundingClientRect();
+        const y = location.current.input.clientY - rect.top;
+        const h = rect.height;
+        const currentDrop =
+          source.data.type === 'folder'
+            ? y < h * 0.25
+              ? 'before'
+              : y > h * 0.75
+                ? 'after'
+                : 'inside'
+            : 'inside';
+
+        setDropState(null);
         const data = source.data;
+
         if (data.type === 'note') {
           onMoveNoteToFolder(data.noteId as string, folder.id);
         } else if (data.type === 'folder') {
           const sourceFolderId = data.folderId as string;
-          if (
-            sourceFolderId !== folder.id &&
-            !folderTreeService.wouldCreateCycle(
-              sourceFolderId,
-              folder.id,
-              allFolders
-            )
-          ) {
-            onMoveFolder(sourceFolderId, folder.id);
+          if (sourceFolderId === folder.id) return;
+
+          if (currentDrop === 'inside') {
+            if (!folderTreeService.wouldCreateCycle(sourceFolderId, folder.id, allFolders)) {
+              onMoveFolder(sourceFolderId, folder.id);
+            }
+          } else if (currentDrop === 'before' || currentDrop === 'after') {
+            if (onReorderFolder) {
+              onReorderFolder(sourceFolderId, folder.id, currentDrop);
+            } else if (!folderTreeService.wouldCreateCycle(sourceFolderId, folder.parentId, allFolders)) {
+              onMoveFolder(sourceFolderId, folder.parentId);
+            }
           }
         }
       },
@@ -115,7 +181,7 @@ export function FolderItem({
       cleanupDraggable();
       cleanupDropTarget();
     };
-  }, [folder.id, allFolders, onMoveNoteToFolder, onMoveFolder]);
+  }, [folder.id, folder.parentId, allFolders, onMoveNoteToFolder, onMoveFolder, onReorderFolder]);
 
   const handleRenameSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,18 +192,26 @@ export function FolderItem({
   };
 
   return (
-    <div className="flex flex-col select-none">
+    <div className="flex flex-col select-none relative font-mono">
+      {/* Explicit visual drop indicators for folder reordering */}
+      {dropState === 'before' && (
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-stack-red-slate shadow-sm z-30 pointer-events-none" />
+      )}
+      {dropState === 'after' && (
+        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-stack-red-slate shadow-sm z-30 pointer-events-none" />
+      )}
+
       <div
         ref={elementRef}
         style={{ paddingLeft: `${depth * 12 + 6}px` }}
         className={`group flex items-center justify-between py-1.5 pr-2 rounded text-xs transition-colors cursor-pointer ${
           isDragging ? 'opacity-40' : 'opacity-100'
         } ${
-          isDraggedOver
+          dropState === 'inside'
             ? 'bg-stack-metal/60 text-stack-bone ring-1 ring-stack-silver/50'
             : 'text-stack-silver hover:bg-stack-metal/40 hover:text-stack-bone'
         }`}
-        onClick={() => setIsExpanded((prev) => !prev)}
+        onClick={() => onToggleExpand(folder.id)}
       >
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
           <button
@@ -145,7 +219,7 @@ export function FolderItem({
             className="p-0.5 text-stack-steel hover:text-stack-bone rounded"
             onClick={(e) => {
               e.stopPropagation();
-              setIsExpanded((prev) => !prev);
+              onToggleExpand(folder.id);
             }}
           >
             {isExpanded ? (
@@ -181,24 +255,24 @@ export function FolderItem({
               />
             </form>
           ) : (
-            <span className="font-mono truncate">{folder.name}</span>
+            <span className="truncate">{folder.name}</span>
           )}
         </div>
 
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             type="button"
             title="New Subfolder"
             onClick={(e) => {
               e.stopPropagation();
-              setIsExpanded(true);
               onCreateChildFolder(folder.id);
             }}
             className="p-1 hover:text-stack-bone text-stack-steel rounded hover:bg-stack-metal"
           >
             <Plus className="h-3 w-3" />
           </button>
-          <div className="relative">
+
+          <div className="relative" ref={menuRef}>
             <button
               type="button"
               title="Folder options"
@@ -212,30 +286,54 @@ export function FolderItem({
             </button>
             {showMenu && (
               <div
-                className="absolute right-0 top-6 z-30 w-32 rounded bg-stack-surface-raised border border-stack-metal/80 shadow-xl py-1"
+                className="absolute right-0 top-6 z-30 w-36 rounded bg-stack-surface-raised border border-stack-metal/80 shadow-xl py-1 text-xs"
                 onClick={(e) => e.stopPropagation()}
               >
                 <button
                   type="button"
                   onClick={() => {
                     setShowMenu(false);
-                    setIsEditing(true);
+                    onCreateChildFolder(folder.id);
                   }}
-                  className="flex items-center gap-2 w-full px-2.5 py-1 text-left text-xs text-stack-silver hover:bg-stack-metal hover:text-stack-bone"
+                  className="flex items-center gap-2 w-full px-2.5 py-1 text-left text-stack-silver hover:bg-stack-metal hover:text-stack-bone"
                 >
-                  <Edit2 className="h-3 w-3" />
-                  <span>Rename</span>
+                  <Plus className="h-3 w-3" />
+                  <span>New Subfolder</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => {
                     setShowMenu(false);
-                    onDeleteFolder(folder.id);
+                    setIsEditing(true);
                   }}
-                  className="flex items-center gap-2 w-full px-2.5 py-1 text-left text-xs text-red-400 hover:bg-stack-metal"
+                  className="flex items-center gap-2 w-full px-2.5 py-1 text-left text-stack-silver hover:bg-stack-metal hover:text-stack-bone"
+                >
+                  <Edit2 className="h-3 w-3" />
+                  <span>Rename</span>
+                </button>
+                {onMoveFolderModal && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMenu(false);
+                      onMoveFolderModal(folder);
+                    }}
+                    className="flex items-center gap-2 w-full px-2.5 py-1 text-left text-stack-silver hover:bg-stack-metal hover:text-stack-bone"
+                  >
+                    <FolderInput className="h-3 w-3" />
+                    <span>Move folder…</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMenu(false);
+                    onDeleteFolder(folder);
+                  }}
+                  className="flex items-center gap-2 w-full px-2.5 py-1 text-left text-red-400 hover:bg-stack-metal"
                 >
                   <Trash2 className="h-3 w-3" />
-                  <span>Delete</span>
+                  <span>Delete folder…</span>
                 </button>
               </div>
             )}
@@ -254,11 +352,15 @@ export function FolderItem({
               notes={notes}
               activeNoteId={activeNoteId}
               depth={depth + 1}
+              expandedFolderIds={expandedFolderIds}
+              onToggleExpand={onToggleExpand}
               onSelectNote={onSelectNote}
               onMoveNoteToFolder={onMoveNoteToFolder}
               onMoveFolder={onMoveFolder}
+              onReorderFolder={onReorderFolder}
               onRenameFolder={onRenameFolder}
               onDeleteFolder={onDeleteFolder}
+              onMoveFolderModal={onMoveFolderModal}
               onCreateChildFolder={onCreateChildFolder}
             />
           ))}
@@ -269,7 +371,7 @@ export function FolderItem({
               key={note.id}
               style={{ paddingLeft: `${(depth + 1) * 12 + 10}px` }}
               onClick={() => onSelectNote(note.id)}
-              className={`flex items-center gap-1.5 py-1 pr-2 rounded text-xs font-mono transition-colors cursor-pointer truncate ${
+              className={`flex items-center gap-1.5 py-1 pr-2 rounded text-xs transition-colors cursor-pointer truncate ${
                 note.id === activeNoteId
                   ? 'bg-stack-metal/70 text-stack-bone font-medium'
                   : 'text-stack-steel hover:text-stack-silver hover:bg-stack-metal/30'
