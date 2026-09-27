@@ -45,8 +45,13 @@ export function getWorkspaceDbName(sub: string): string {
   return `stack_user_${hashSub(sub)}`;
 }
 
-export function buildAttachmentKey(noteId: string, logicalPath: string): string {
-  const normalized = logicalPath.startsWith('./') ? logicalPath : `./${logicalPath}`;
+export function buildAttachmentKey(
+  noteId: string,
+  logicalPath: string
+): string {
+  const normalized = logicalPath.startsWith('./')
+    ? logicalPath
+    : `./${logicalPath}`;
   return `${noteId}::${normalized}`;
 }
 
@@ -326,7 +331,10 @@ export const userWorkspaceStorage = {
       const altPath = logicalPath.startsWith('./')
         ? logicalPath.slice(2)
         : `./${logicalPath}`;
-      result = await this.getAttachment(sub, buildAttachmentKey(noteId, altPath));
+      result = await this.getAttachment(
+        sub,
+        buildAttachmentKey(noteId, altPath)
+      );
     }
     if (!result) {
       // Fallback: check legacy un-scoped key

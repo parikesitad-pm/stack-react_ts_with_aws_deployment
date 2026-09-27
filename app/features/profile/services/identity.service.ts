@@ -1,7 +1,10 @@
 import type { UserProfile } from '../schemas/username.schema';
 import { normalizeUsername, usernameSchema } from '../schemas/username.schema';
 import { DevMockIdentityAdapter } from './identityMock.service';
-import { stackApiFetch, getStackApiBaseUrl } from '~/features/api/stackApiFetch';
+import {
+  stackApiFetch,
+  getStackApiBaseUrl,
+} from '~/features/api/stackApiFetch';
 
 export interface OnboardingPayload {
   username: string;

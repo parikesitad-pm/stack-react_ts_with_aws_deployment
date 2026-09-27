@@ -469,7 +469,10 @@ describe('Sprint 5: Images, Attachments & Offline Resilience Contracts', () => {
 
       // 1. Initial paste / attachment insertion
       await attachmentRepository.putAttachment(SUB_ALICE, att, blob);
-      const url1 = await attachmentResolver.acquire('./assets/diagram.webp', NOTE_1);
+      const url1 = await attachmentResolver.acquire(
+        './assets/diagram.webp',
+        NOTE_1
+      );
       expect(url1).toBeTruthy();
 
       // 2. User presses Ctrl+Z (Markdown text is undone / removed)
@@ -487,7 +490,10 @@ describe('Sprint 5: Images, Attachments & Offline Resilience Contracts', () => {
 
       // 3. User presses Ctrl+Shift+Z (Redo restores markdown text)
       // Component mounts and resolves again: MUST succeed without broken image!
-      const url2 = await attachmentResolver.acquire('./assets/diagram.webp', NOTE_1);
+      const url2 = await attachmentResolver.acquire(
+        './assets/diagram.webp',
+        NOTE_1
+      );
       expect(url2).toBeTruthy();
       attachmentResolver.release('./assets/diagram.webp', NOTE_1);
     });

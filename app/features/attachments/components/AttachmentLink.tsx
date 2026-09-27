@@ -44,7 +44,12 @@ export function AttachmentLink({
   }
 
   return (
-    <LocalAttachmentDownloadLink href={href} noteId={noteId} className={className} {...props}>
+    <LocalAttachmentDownloadLink
+      href={href}
+      noteId={noteId}
+      className={className}
+      {...props}
+    >
       {children}
     </LocalAttachmentDownloadLink>
   );

@@ -77,7 +77,10 @@ export class ImageProcessingService {
     }
 
     // Helper to get image dimensions
-    const getDimensions = async (): Promise<{ width: number; height: number } | null> => {
+    const getDimensions = async (): Promise<{
+      width: number;
+      height: number;
+    } | null> => {
       if ('_dimensions' in file && (file as any)._dimensions) {
         return (file as any)._dimensions;
       }

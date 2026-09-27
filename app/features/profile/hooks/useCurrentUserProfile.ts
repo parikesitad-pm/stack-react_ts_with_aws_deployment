@@ -21,15 +21,23 @@ export function useCurrentUserProfile() {
     queryFn: async () => {
       if (!sub) return null;
       let token = '';
+      const audience = getAuth0Config().audience;
       try {
-        const t = await getAccessTokenSilently({
-          authorizationParams: {
-            audience: getAuth0Config().audience,
-          },
-        });
+        const t = await getAccessTokenSilently(
+          audience
+            ? {
+                authorizationParams: {
+                  audience,
+                },
+              }
+            : undefined
+        );
         if (t) token = t;
       } catch (err) {
-        console.warn('[useCurrentUserProfile] getAccessTokenSilently error:', err);
+        console.warn(
+          '[useCurrentUserProfile] getAccessTokenSilently error:',
+          err
+        );
         if (IdentityService.isDevOrTest()) {
           token = sub;
         }
@@ -43,12 +51,17 @@ export function useCurrentUserProfile() {
 
   const getEffectiveToken = useCallback(async (): Promise<string> => {
     if (!sub) throw new Error('AUTH_REQUIRED');
+    const audience = getAuth0Config().audience;
     try {
-      const token = await getAccessTokenSilently({
-        authorizationParams: {
-          audience: getAuth0Config().audience,
-        },
-      });
+      const token = await getAccessTokenSilently(
+        audience
+          ? {
+              authorizationParams: {
+                audience,
+              },
+            }
+          : undefined
+      );
       if (token) return token;
     } catch {}
     if (IdentityService.isDevOrTest()) return sub;

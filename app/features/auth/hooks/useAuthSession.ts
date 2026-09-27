@@ -44,15 +44,21 @@ export function useAuthSession() {
       attachmentRepository.setActiveSub(auth0User.sub);
 
       setIsProfileLoading(true);
-      getAccessTokenSilently({
-        authorizationParams: {
-          audience: getAuth0Config().audience,
-        },
-      })
+      const audience = getAuth0Config().audience;
+      getAccessTokenSilently(
+        audience
+          ? {
+              authorizationParams: {
+                audience,
+              },
+            }
+          : undefined
+      )
         .then(async (t) => {
           if (!isMounted) return;
           setToken(t || null);
-          const authToken = t || (IdentityService.isDevOrTest() ? auth0User.sub : '');
+          const authToken =
+            t || (IdentityService.isDevOrTest() ? auth0User.sub : '');
           if (authToken) {
             try {
               const p = await IdentityService.getProfile(authToken);
@@ -119,14 +125,25 @@ export function useAuthSession() {
       email: auth0User.email || '',
       emailVerified,
       username,
-      preferredName: profile?.preferredName || profile?.username || auth0User.name || username,
+      preferredName:
+        profile?.preferredName ||
+        profile?.username ||
+        auth0User.name ||
+        username,
       dateOfBirth: profile?.dateOfBirth,
       picture: auth0User.picture,
       isSocial,
       provider,
       hasCompletedOnboarding,
     };
-  }, [auth0User, profile, emailVerified, isSocial, provider, hasCompletedOnboarding]);
+  }, [
+    auth0User,
+    profile,
+    emailVerified,
+    isSocial,
+    provider,
+    hasCompletedOnboarding,
+  ]);
 
   const loginWithGoogle = useCallback(
     async (returnTo?: string) => {
@@ -197,10 +214,7 @@ export function useAuthSession() {
   }, [getIdTokenClaims]);
 
   const claimUsername = useCallback(
-    async (
-      username: string,
-      dateOfBirth?: string
-    ): Promise<UserProfile> => {
+    async (username: string, dateOfBirth?: string): Promise<UserProfile> => {
       if (!auth0User?.sub) {
         throw new Error('AUTH_REQUIRED');
       }
@@ -227,11 +241,7 @@ export function useAuthSession() {
   }, [token]);
 
   const completeOnboarding = useCallback(
-    (
-      _preferredName: string,
-      username: string,
-      dateOfBirth: string
-    ) => {
+    (_preferredName: string, username: string, dateOfBirth: string) => {
       return claimUsername(username, dateOfBirth);
     },
     [claimUsername]
@@ -240,7 +250,11 @@ export function useAuthSession() {
   const updateProfile = useCallback(
     (partial: Partial<UserProfile>) => {
       if (profile) {
-        const updated = { ...profile, ...partial, updatedAt: new Date().toISOString() };
+        const updated = {
+          ...profile,
+          ...partial,
+          updatedAt: new Date().toISOString(),
+        };
         setProfile(updated);
         return updated;
       }

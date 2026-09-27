@@ -113,7 +113,10 @@ class AttachmentUploadService {
         this.processQueue();
       }
     } catch (err) {
-      console.warn('[AttachmentUpload] Failed to resume queue from storage:', err);
+      console.warn(
+        '[AttachmentUpload] Failed to resume queue from storage:',
+        err
+      );
     }
   }
 

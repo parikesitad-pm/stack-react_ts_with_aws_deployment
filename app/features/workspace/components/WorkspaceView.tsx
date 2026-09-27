@@ -795,7 +795,10 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
 
           setAttachments((prev) => ({
             ...prev,
-            [activeNote.id]: [...(prev[activeNote.id] || []), ...newAttachments],
+            [activeNote.id]: [
+              ...(prev[activeNote.id] || []),
+              ...newAttachments,
+            ],
           }));
         } catch (insertErr) {
           // Invariant 9: Clean up newly created orphan if initial Markdown insertion fails
