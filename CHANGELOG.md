@@ -9,23 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Local-first attachment repository (`attachmentRepository`) persisted in user-scoped IndexedDB databases (`stack_user_{subHash}`) storing binary blobs as `Blob`/`ArrayBuffer`.
-- Client-side image optimization pipeline (`imageProcessingService`) enforcing max long edge of 2560px, WebP encoding at ~0.82 quality, EXIF metadata stripping via canvas re-encoding, preserving animated GIF frames without flattening, preserving SVG vectors without rasterization, preserving small files (≤ 150KB WebP/JPEG) without re-encoding, and enforcing a 25MB file size limit.
-- Deterministic logical relative paths (`./assets/filename.webp` or `./assets/doc.pdf`) generated via `attachmentPathService` with character sanitization and numeric collision resolution (`-2`, `-3`), ensuring Markdown documents retain clean relative links rather than volatile `blob:` or expired signed URLs.
-- Reference-counted browser object URL cache (`objectUrlCache`) sharing exact blob URLs between Split editor preview and Read mode components, revoking URLs only when reference count drops to 0, with user-scoped eviction (`clearUser`) upon logout or account change.
-- Shared attachment resolver (`attachmentResolverService`) used identically across Split preview and Read mode rendering engines.
-- Generic non-image attachment link component (`AttachmentLink`) rendering compact download chips with file type icons, human-readable byte sizes, and missing attachment recovery fallbacks.
-- Non-blocking image insertion modal (`InsertImageModal`) providing seamless choice between local file upload and external web image URLs.
-- Drag-and-drop overlay (`AttachmentDropOverlay`) and clipboard paste support (`onFilesPaste`/`onFilesDrop`) integrated into CodeMirror document transaction pipeline without bypassing editor authority.
-- Truthful offline resilience queue (`attachmentUploadService`) with non-blocking reconnect retry, bounded exponential backoff, and strict reporting that keeps attachments in `local-only` state when remote cloud endpoints are unconfigured without falsely claiming "Uploaded" or "Synced to cloud".
-- Note attachment lifecycle management: attachments are note-scoped (`attachment.noteId`), preserved across Archive and Trash states, and deleted only upon permanent note deletion or Danger Zone account deletion.
-- Comprehensive Sprint 5 test suite (`attachment.test.ts`) covering path generation, image optimization, multi-user IndexedDB isolation, object URL refcounting, shared resolution, and offline truthfulness (all 94/94 tests passing).
+- Local-first attachment repository (`attachmentRepository`) persisted in user-scoped IndexedDB databases (`stack_user_{subHash}`) storing binary blobs as `Blob`/`ArrayBuffer` with note boundary isolation (`sub + noteId + logicalPath`).
+- Multi-note relative attachment isolation: two different notes can legitimately reference identical relative paths (e.g. `./assets/screenshot.webp`) without collision or cross-note contamination.
+- Binary immutability guarantee: `attachmentId` represents an immutable binary object, and object URL cache keys strictly use `${sub}:${attachmentId}`.
+- Undo/Redo attachment safety: removing an image reference in Markdown (Ctrl+Z) preserves the binary in IndexedDB; Redo (Ctrl+Shift+Z) restores the rendered image without broken images.
+- Durable and resumable upload queue (`attachmentUploadService.resumeQueueFromStorage`): automatically restores pending `queued` uploads on workspace startup, network reconnection, and explicit retry.
+- Cloud resolution fallback: resolution prioritizes local Blob -> authenticated cloud download -> truthful visual missing fallback ("This attachment isn't available on this device."), never persisting signed download URLs to IndexedDB.
+- Scriptable SVG & document safety: SVGs are rendered exclusively via safe `<img>` boundaries; non-image assets (HTML/JS/XML) are download-only.
+- Strict image preservation: verifies both `byteSize <= 150KB` AND `longEdge <= 2560px` before preserving without re-encoding; images exceeding 2560px are resized via canvas.
+- EXIF metadata stripping truthfulness: canvas-optimized images strip EXIF metadata, while untouched small originals retain exact binary bytes.
+- Atomic insertion rollback: orphan blobs are deleted from IndexedDB if initial editor text insertion fails.
+- Client-side image optimization pipeline (`imageProcessingService`) enforcing max long edge of 2560px, WebP encoding at ~0.82 quality, and enforcing 25MB file size limit before reading into memory.
+- Centralized authenticated API transport (`stackApiFetch`) strictly separating Auth0 token acquisition audience (`VITE_AUTH0_AUDIENCE=urn:stack:api`) from backend HTTP endpoints (`VITE_API_BASE_URL`).
 
 ### Changed
 
 - Updated `CodeMirrorEditor` to support imperative `insertText` handles and DOM event handlers for drag/drop and clipboard image pastes.
 - Updated `MarkdownToolbar` to trigger image modal actions alongside a non-blocking sync status indicator.
-- Updated `WorkspaceView` to clean up user attachment caches on sign-out and delete note attachments on permanent note deletion and empty trash.
+- Updated `WorkspaceView` to clean up user attachment caches on sign-out, resume durable upload queues on mount, and delete note attachments on permanent note deletion and empty trash.
+- Updated `MarkdownRenderer` and `MarkdownPreview` to receive and forward `noteId` down to image and link resolvers.
 
 ## [0.8.0] - 2026-09-27
 

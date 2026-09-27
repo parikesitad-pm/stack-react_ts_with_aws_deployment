@@ -22,9 +22,7 @@ export function sanitizeFileName(rawName: string): string {
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
 
-  const cleanExt = ext
-    .replace(/[^a-z0-9.]/g, '')
-    .toLowerCase();
+  const cleanExt = ext.replace(/[^a-z0-9.]/g, '').toLowerCase();
 
   clean = cleanBase ? `${cleanBase}${cleanExt}` : `attachment${cleanExt}`;
 
@@ -73,7 +71,8 @@ export function generateLogicalPath(
 
 export function extractAltText(fileName: string): string {
   const extIdx = fileName.lastIndexOf('.');
-  const base = extIdx > 0 ? fileName.slice(0, extIdx) : (extIdx === 0 ? '' : fileName);
+  const base =
+    extIdx > 0 ? fileName.slice(0, extIdx) : extIdx === 0 ? '' : fileName;
   // Convert hyphens and underscores to spaces for clean readable alt text
   const text = base.replace(/[-_]+/g, ' ').trim();
   return text || 'image';

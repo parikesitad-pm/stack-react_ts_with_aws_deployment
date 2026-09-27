@@ -31,51 +31,69 @@ describe('Sprint 5: Images, Attachments & Offline Resilience Contracts', () => {
 
   describe('1. Logical Paths, Sanitization & Collision Resolution', () => {
     it('sanitizes unsafe filenames for predictable filesystem and URL behavior', () => {
-      expect(attachmentPathService.sanitizeFileName('My Photo (1) - Final!.PNG')).toBe(
-        'my-photo-1-final.png'
-      );
-      expect(attachmentPathService.sanitizeFileName('../../etc/passwd.txt')).toBe(
-        'etc-passwd.txt'
-      );
+      expect(
+        attachmentPathService.sanitizeFileName('My Photo (1) - Final!.PNG')
+      ).toBe('my-photo-1-final.png');
+      expect(
+        attachmentPathService.sanitizeFileName('../../etc/passwd.txt')
+      ).toBe('etc-passwd.txt');
       expect(attachmentPathService.sanitizeFileName('   ')).toBe('attachment');
-      expect(attachmentPathService.sanitizeFileName('complex name [with] symbols & spaces.pdf')).toBe(
-        'complex-name-with-symbols-spaces.pdf'
-      );
+      expect(
+        attachmentPathService.sanitizeFileName(
+          'complex name [with] symbols & spaces.pdf'
+        )
+      ).toBe('complex-name-with-symbols-spaces.pdf');
     });
 
     it('extracts human-readable alt text from filenames', () => {
-      expect(attachmentPathService.extractAltText('server-architecture-diagram.webp')).toBe(
-        'server architecture diagram'
-      );
-      expect(attachmentPathService.extractAltText('annual_financial_report_2026.pdf')).toBe(
-        'annual financial report 2026'
-      );
+      expect(
+        attachmentPathService.extractAltText('server-architecture-diagram.webp')
+      ).toBe('server architecture diagram');
+      expect(
+        attachmentPathService.extractAltText('annual_financial_report_2026.pdf')
+      ).toBe('annual financial report 2026');
       expect(attachmentPathService.extractAltText('.png')).toBe('image');
     });
 
     it('generates logical path and avoids collisions with numeric suffixes', () => {
-      const existing = new Set(['./assets/blueprint.webp', './assets/blueprint-2.webp']);
-      const path1 = attachmentPathService.generateLogicalPath('blueprint.webp', new Set());
+      const existing = new Set([
+        './assets/blueprint.webp',
+        './assets/blueprint-2.webp',
+      ]);
+      const path1 = attachmentPathService.generateLogicalPath(
+        'blueprint.webp',
+        new Set()
+      );
       expect(path1.logicalPath).toBe('./assets/blueprint.webp');
 
-      const path2 = attachmentPathService.generateLogicalPath('blueprint.webp', existing);
+      const path2 = attachmentPathService.generateLogicalPath(
+        'blueprint.webp',
+        existing
+      );
       expect(path2.logicalPath).toBe('./assets/blueprint-3.webp');
     });
   });
 
   describe('2. Client-Side Image Processing & Optimization Invariants', () => {
     it('rejects files larger than 25MB immediately with truthful error', async () => {
-      const largeFile = new File([new Uint8Array(26 * 1024 * 1024)], 'giant.png', {
-        type: 'image/png',
-      });
+      const largeFile = new File(
+        [new Uint8Array(26 * 1024 * 1024)],
+        'giant.png',
+        {
+          type: 'image/png',
+        }
+      );
       await expect(imageProcessingService.process(largeFile)).rejects.toThrow(
         /exceeds the 25MB limit/i
       );
     });
 
     it('preserves SVG files without rasterization or alteration', async () => {
-      const svgContent = '<svg xmlns="http://www.w3.org/2000/svg"><circle r="10"/></svg>';
-      const svgFile = new File([svgContent], 'vector.svg', { type: 'image/svg+xml' });
+      const svgContent =
+        '<svg xmlns="http://www.w3.org/2000/svg"><circle r="10"/></svg>';
+      const svgFile = new File([svgContent], 'vector.svg', {
+        type: 'image/svg+xml',
+      });
 
       const result = await imageProcessingService.process(svgFile);
       expect(result.mimeType).toBe('image/svg+xml');
@@ -85,7 +103,9 @@ describe('Sprint 5: Images, Attachments & Offline Resilience Contracts', () => {
     });
 
     it('preserves animated GIF files to prevent flattening frames', async () => {
-      const gifBytes = new Uint8Array([0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00]);
+      const gifBytes = new Uint8Array([
+        0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00,
+      ]);
       const gifFile = new File([gifBytes], 'anim.gif', { type: 'image/gif' });
 
       const result = await imageProcessingService.process(gifFile);
@@ -94,18 +114,34 @@ describe('Sprint 5: Images, Attachments & Offline Resilience Contracts', () => {
       expect(result.wasOptimized).toBe(false);
     });
 
-    it('preserves already small WebP and JPEG images (<= 150KB)', async () => {
+    it('preserves already small WebP and JPEG images (<= 150KB) only if long edge <= 2560px', async () => {
       const smallBytes = new Uint8Array(50 * 1024); // 50KB
-      const smallWebpFile = new File([smallBytes], 'thumbnail.webp', { type: 'image/webp' });
+      const smallWebpFile = new File([smallBytes], 'thumbnail.webp', {
+        type: 'image/webp',
+      });
+      (smallWebpFile as any)._dimensions = { width: 800, height: 600 };
 
       const result = await imageProcessingService.process(smallWebpFile);
       expect(result.mimeType).toBe('image/webp');
       expect(result.wasOptimized).toBe(false);
     });
 
+    it('optimizes small WebP and JPEG images (<= 150KB) if long edge exceeds 2560px', async () => {
+      const smallBytes = new Uint8Array(50 * 1024); // 50KB
+      const wideBannerFile = new File([smallBytes], 'banner.webp', {
+        type: 'image/webp',
+      });
+      (wideBannerFile as any)._dimensions = { width: 3200, height: 100 };
+
+      const result = await imageProcessingService.process(wideBannerFile);
+      expect(result.wasOptimized).toBe(true);
+    });
+
     it('passes non-image documents through directly', async () => {
       const pdfBytes = new Uint8Array(2048);
-      const pdfFile = new File([pdfBytes], 'contract.pdf', { type: 'application/pdf' });
+      const pdfFile = new File([pdfBytes], 'contract.pdf', {
+        type: 'application/pdf',
+      });
 
       const result = await imageProcessingService.process(pdfFile);
       expect(result.mimeType).toBe('application/pdf');
@@ -134,13 +170,19 @@ describe('Sprint 5: Images, Attachments & Offline Resilience Contracts', () => {
       await attachmentRepository.putAttachment(SUB_ALICE, attachment, blob);
 
       // Alice can read her attachment
-      const stored = await attachmentRepository.getAttachment('./assets/contract.pdf', SUB_ALICE);
+      const stored = await attachmentRepository.getAttachment(
+        './assets/contract.pdf',
+        SUB_ALICE
+      );
       expect(stored).not.toBeNull();
       expect(stored?.mimeType).toBe('application/pdf');
       expect(stored?.attachment?.id).toBe('att_01');
 
       // Bob CANNOT access Alice\'s attachment
-      const bobsResult = await attachmentRepository.getAttachment('./assets/contract.pdf', SUB_BOB);
+      const bobsResult = await attachmentRepository.getAttachment(
+        './assets/contract.pdf',
+        SUB_BOB
+      );
       expect(bobsResult).toBeNull();
     });
 
@@ -169,12 +211,16 @@ describe('Sprint 5: Images, Attachments & Offline Resilience Contracts', () => {
 
       // 3. Bob logs in
       attachmentRepository.setActiveSub(SUB_BOB);
-      const bobAttempt = await attachmentRepository.getAttachment('./assets/secret.webp');
+      const bobAttempt = await attachmentRepository.getAttachment(
+        './assets/secret.webp'
+      );
       expect(bobAttempt).toBeNull();
 
       // 4. Bob logs out, Alice logs back in
       attachmentRepository.setActiveSub(SUB_ALICE);
-      const aliceRetrieved = await attachmentRepository.getAttachment('./assets/secret.webp');
+      const aliceRetrieved = await attachmentRepository.getAttachment(
+        './assets/secret.webp'
+      );
       expect(aliceRetrieved).not.toBeNull();
       expect(aliceRetrieved?.attachment?.id).toBe('att_02');
     });
@@ -211,13 +257,92 @@ describe('Sprint 5: Images, Attachments & Offline Resilience Contracts', () => {
       await attachmentRepository.putAttachment(SUB_ALICE, att1, blob);
       await attachmentRepository.putAttachment(SUB_ALICE, att2, blob);
 
-      expect(await attachmentRepository.findByNoteId(NOTE_1, SUB_ALICE)).toHaveLength(1);
-      expect(await attachmentRepository.findByNoteId(NOTE_2, SUB_ALICE)).toHaveLength(1);
+      expect(
+        await attachmentRepository.findByNoteId(NOTE_1, SUB_ALICE)
+      ).toHaveLength(1);
+      expect(
+        await attachmentRepository.findByNoteId(NOTE_2, SUB_ALICE)
+      ).toHaveLength(1);
 
       // Permanent delete of NOTE_1 cleans only its attachments
       await attachmentRepository.deleteAttachmentsByNoteId(NOTE_1, SUB_ALICE);
-      expect(await attachmentRepository.findByNoteId(NOTE_1, SUB_ALICE)).toHaveLength(0);
-      expect(await attachmentRepository.findByNoteId(NOTE_2, SUB_ALICE)).toHaveLength(1);
+      expect(
+        await attachmentRepository.findByNoteId(NOTE_1, SUB_ALICE)
+      ).toHaveLength(0);
+      expect(
+        await attachmentRepository.findByNoteId(NOTE_2, SUB_ALICE)
+      ).toHaveLength(1);
+    });
+
+    it('supports identical logicalPath across different notes without cross-contamination', async () => {
+      const blobA = new Blob(['Image for Note A'], { type: 'image/webp' });
+      const attA: Attachment = {
+        id: 'att_note_a',
+        noteId: NOTE_1,
+        logicalPath: './assets/screenshot.webp',
+        fileName: 'screenshot.webp',
+        mimeType: 'image/webp',
+        byteSize: blobA.size,
+        kind: 'image',
+        localState: 'available',
+        cloudState: 'local-only',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const blobB = new Blob(['Image for Note B (Different)'], {
+        type: 'image/webp',
+      });
+      const attB: Attachment = {
+        id: 'att_note_b',
+        noteId: NOTE_2,
+        logicalPath: './assets/screenshot.webp', // SAME relative path!
+        fileName: 'screenshot.webp',
+        mimeType: 'image/webp',
+        byteSize: blobB.size,
+        kind: 'image',
+        localState: 'available',
+        cloudState: 'local-only',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      await attachmentRepository.putAttachment(SUB_ALICE, attA, blobA);
+      await attachmentRepository.putAttachment(SUB_ALICE, attB, blobB);
+
+      // Note 1 retrieval returns attA
+      const resA = await attachmentRepository.getAttachmentByPath(
+        SUB_ALICE,
+        NOTE_1,
+        './assets/screenshot.webp'
+      );
+      expect(resA).not.toBeNull();
+      expect(resA?.attachment?.id).toBe('att_note_a');
+      expect(await resA?.blob.text()).toBe('Image for Note A');
+
+      // Note 2 retrieval returns attB
+      const resB = await attachmentRepository.getAttachmentByPath(
+        SUB_ALICE,
+        NOTE_2,
+        './assets/screenshot.webp'
+      );
+      expect(resB).not.toBeNull();
+      expect(resB?.attachment?.id).toBe('att_note_b');
+      expect(await resB?.blob.text()).toBe('Image for Note B (Different)');
+
+      // getAttachmentBlob(sub, noteId, logicalPath) returns respective blobs
+      const blobFromA = await attachmentRepository.getAttachmentBlob(
+        SUB_ALICE,
+        NOTE_1,
+        './assets/screenshot.webp'
+      );
+      const blobFromB = await attachmentRepository.getAttachmentBlob(
+        SUB_ALICE,
+        NOTE_2,
+        './assets/screenshot.webp'
+      );
+      expect(await blobFromA?.text()).toBe('Image for Note A');
+      expect(await blobFromB?.text()).toBe('Image for Note B (Different)');
     });
   });
 
@@ -312,16 +437,59 @@ describe('Sprint 5: Images, Attachments & Offline Resilience Contracts', () => {
 
       await attachmentRepository.putAttachment(SUB_ALICE, att, blob);
 
-      const resolvedUrl = await attachmentResolver.acquire('./assets/notes.txt');
+      const resolvedUrl =
+        await attachmentResolver.acquire('./assets/notes.txt');
       expect(resolvedUrl).toBeTruthy();
 
       // Trying to resolve a missing path throws explicit error
-      await expect(attachmentResolver.acquire('./assets/nonexistent.png')).rejects.toThrow(
-        /Attachment not found/i
-      );
+      await expect(
+        attachmentResolver.acquire('./assets/nonexistent.png')
+      ).rejects.toThrow(/This attachment isn't available on this device/i);
 
       // Release cleans up
       attachmentResolver.release('./assets/notes.txt');
+    });
+
+    it('Undo/Redo safety: removing markdown reference does not delete binary, redo restores preview', async () => {
+      attachmentRepository.setActiveSub(SUB_ALICE);
+      const blob = new Blob(['diagram binary content'], { type: 'image/webp' });
+      const att: Attachment = {
+        id: 'att_undo_test',
+        noteId: NOTE_1,
+        logicalPath: './assets/diagram.webp',
+        fileName: 'diagram.webp',
+        mimeType: 'image/webp',
+        byteSize: blob.size,
+        kind: 'image',
+        localState: 'available',
+        cloudState: 'local-only',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      // 1. Initial paste / attachment insertion
+      await attachmentRepository.putAttachment(SUB_ALICE, att, blob);
+      const url1 = await attachmentResolver.acquire('./assets/diagram.webp', NOTE_1);
+      expect(url1).toBeTruthy();
+
+      // 2. User presses Ctrl+Z (Markdown text is undone / removed)
+      // Component unmounts preview reference
+      attachmentResolver.release('./assets/diagram.webp', NOTE_1);
+
+      // Binary MUST still exist in repository!
+      const stillThere = await attachmentRepository.getAttachmentByPath(
+        SUB_ALICE,
+        NOTE_1,
+        './assets/diagram.webp'
+      );
+      expect(stillThere).not.toBeNull();
+      expect(await stillThere?.blob.text()).toBe('diagram binary content');
+
+      // 3. User presses Ctrl+Shift+Z (Redo restores markdown text)
+      // Component mounts and resolves again: MUST succeed without broken image!
+      const url2 = await attachmentResolver.acquire('./assets/diagram.webp', NOTE_1);
+      expect(url2).toBeTruthy();
+      attachmentResolver.release('./assets/diagram.webp', NOTE_1);
     });
   });
 
@@ -354,8 +522,41 @@ describe('Sprint 5: Images, Attachments & Offline Resilience Contracts', () => {
       expect(status.isOnline).toBe(true);
 
       // Inspect attachment state remains local-only
-      const stored = await attachmentRepository.getAttachment('./assets/offline.pdf', SUB_ALICE);
+      const stored = await attachmentRepository.getAttachment(
+        './assets/offline.pdf',
+        SUB_ALICE
+      );
       expect(stored?.attachment?.cloudState).toBe('local-only');
+    });
+
+    it('resumes pending queued uploads from durable IndexedDB storage', async () => {
+      const blob = new Blob(['queued payload'], { type: 'application/pdf' });
+      const att: Attachment = {
+        id: 'att_resumable_queue',
+        noteId: NOTE_1,
+        logicalPath: './assets/queued.pdf',
+        fileName: 'queued.pdf',
+        mimeType: 'application/pdf',
+        byteSize: blob.size,
+        kind: 'document',
+        localState: 'available',
+        cloudState: 'queued', // Queued in IndexedDB
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Persist to storage
+      await attachmentRepository.putAttachment(SUB_ALICE, att, blob);
+
+      // Verify queue is currently empty in memory
+      attachmentUploadService.resetForTesting();
+      expect(attachmentUploadService.getPendingCount()).toBe(0);
+
+      // Resume from storage
+      await attachmentUploadService.resumeQueueFromStorage(SUB_ALICE);
+
+      // Queue has resumed the pending item
+      expect(attachmentUploadService.getPendingCount()).toBe(1);
     });
   });
 

@@ -11,11 +11,13 @@ import {
 
 export interface AttachmentLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
   href?: string;
+  noteId?: string;
   children?: React.ReactNode;
 }
 
 export function AttachmentLink({
   href = '',
+  noteId,
   children,
   className = '',
   ...props
@@ -42,7 +44,7 @@ export function AttachmentLink({
   }
 
   return (
-    <LocalAttachmentDownloadLink href={href} className={className} {...props}>
+    <LocalAttachmentDownloadLink href={href} noteId={noteId} className={className} {...props}>
       {children}
     </LocalAttachmentDownloadLink>
   );
@@ -50,11 +52,12 @@ export function AttachmentLink({
 
 function LocalAttachmentDownloadLink({
   href,
+  noteId,
   children,
   className = '',
   ...props
 }: AttachmentLinkProps & { href: string }) {
-  const { status, url } = useResolvedAttachmentUrl(href);
+  const { status, url } = useResolvedAttachmentUrl(href, noteId);
 
   // Extract clean filename from href
   const fileName = href.split('/').pop() || 'attachment';

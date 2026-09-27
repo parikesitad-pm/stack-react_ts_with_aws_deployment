@@ -16,6 +16,8 @@ export type ChallengePurpose =
   | 'add-password'
   | 'delete-account';
 
+import { stackApiFetch, getStackApiBaseUrl } from '~/features/api/stackApiFetch';
+
 export interface SecurityChallengeRecord {
   challengeId: string;
   purpose: ChallengePurpose;
@@ -161,11 +163,7 @@ export class MockSecurityChallengeAdapter {
 
 export class SecurityChallengeService {
   static getApiBaseUrl(): string {
-    return (
-      (typeof import.meta !== 'undefined' &&
-        import.meta.env?.VITE_API_BASE_URL) ||
-      ''
-    );
+    return getStackApiBaseUrl();
   }
 
   static isDevOrTest(): boolean {
@@ -188,12 +186,8 @@ export class SecurityChallengeService {
 
     const apiBase = this.getApiBaseUrl();
     if (apiBase) {
-      const res = await fetch(`${apiBase}/me/security/challenges`, {
+      const res = await stackApiFetch('/me/security/challenges', token, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ purpose }),
       });
 

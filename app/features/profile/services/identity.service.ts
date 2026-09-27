@@ -1,6 +1,7 @@
 import type { UserProfile } from '../schemas/username.schema';
 import { normalizeUsername, usernameSchema } from '../schemas/username.schema';
 import { DevMockIdentityAdapter } from './identityMock.service';
+import { stackApiFetch, getStackApiBaseUrl } from '~/features/api/stackApiFetch';
 
 export interface OnboardingPayload {
   username: string;
@@ -18,11 +19,7 @@ export class IdentityService {
    * Evaluates if the authoritative backend API is configured
    */
   static getApiBaseUrl(): string {
-    return (
-      (typeof import.meta !== 'undefined' &&
-        import.meta.env?.VITE_API_BASE_URL) ||
-      ''
-    );
+    return getStackApiBaseUrl();
   }
 
   static hasBackendApi(): boolean {
@@ -106,15 +103,19 @@ export class IdentityService {
     const apiBase = this.getApiBaseUrl();
     if (apiBase) {
       try {
-        const res = await fetch(`${apiBase}/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await stackApiFetch('/me', token);
         if (res.ok) {
           return (await res.json()) as UserProfile;
         }
         if (res.status === 404) return null;
+        console.error(
+          `[IdentityService] /me returned HTTP ${res.status}:`,
+          await res.text()
+        );
+        throw new Error(`IDENTITY_API_ERROR: HTTP ${res.status}`);
       } catch (err) {
         console.error('[IdentityService] Failed to fetch /me:', err);
+        throw err;
       }
     }
 
@@ -154,12 +155,8 @@ export class IdentityService {
 
     const apiBase = this.getApiBaseUrl();
     if (apiBase) {
-      const res = await fetch(`${apiBase}/me/onboarding`, {
+      const res = await stackApiFetch('/me/onboarding', token, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           username: normalized,
           dateOfBirth: payload.dateOfBirth,
@@ -212,11 +209,8 @@ export class IdentityService {
       throw new Error('RESEND_BACKEND_UNAVAILABLE');
     }
 
-    const res = await fetch(`${apiBase}/me/resend-verification`, {
+    const res = await stackApiFetch('/me/resend-verification', token, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
     });
 
     if (!res.ok) {
@@ -240,12 +234,8 @@ export class IdentityService {
 
     const apiBase = this.getApiBaseUrl();
     if (apiBase) {
-      const res = await fetch(`${apiBase}/me/profile`, {
+      const res = await stackApiFetch('/me/profile', token, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify(payload),
       });
 
@@ -288,12 +278,8 @@ export class IdentityService {
 
     const apiBase = this.getApiBaseUrl();
     if (apiBase) {
-      const res = await fetch(`${apiBase}/me/username`, {
+      const res = await stackApiFetch('/me/username', token, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           newUsername: normalized,
           challengeId: payload.challengeId,
@@ -340,12 +326,8 @@ export class IdentityService {
 
     const apiBase = this.getApiBaseUrl();
     if (apiBase) {
-      const res = await fetch(`${apiBase}/me/email`, {
+      const res = await stackApiFetch('/me/email', token, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           newEmail: payload.newEmail,
           challengeId: payload.challengeId,
@@ -383,11 +365,8 @@ export class IdentityService {
 
     const apiBase = this.getApiBaseUrl();
     if (apiBase) {
-      const res = await fetch(`${apiBase}/me/avatar`, {
+      const res = await stackApiFetch('/me/avatar', token, {
         method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
 
       if (!res.ok) {
@@ -417,11 +396,8 @@ export class IdentityService {
 
     const apiBase = this.getApiBaseUrl();
     if (apiBase) {
-      const res = await fetch(`${apiBase}/me/password/change`, {
+      const res = await stackApiFetch('/me/password/change', token, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
 
       if (!res.ok) {
@@ -454,11 +430,8 @@ export class IdentityService {
 
     const apiBase = this.getApiBaseUrl();
     if (apiBase) {
-      const res = await fetch(`${apiBase}/me/password/add`, {
+      const res = await stackApiFetch('/me/password/add', token, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
 
       if (res.status === 501) {
@@ -499,12 +472,8 @@ export class IdentityService {
 
     const apiBase = this.getApiBaseUrl();
     if (apiBase) {
-      const res = await fetch(`${apiBase}/me`, {
+      const res = await stackApiFetch('/me', token, {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           confirmedUsername: payload.confirmedUsername,
           challengeId: payload.challengeId,

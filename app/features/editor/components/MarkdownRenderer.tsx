@@ -6,11 +6,13 @@ import { AttachmentLink } from '~/features/attachments/components/AttachmentLink
 export interface MarkdownRendererProps {
   content: string;
   className?: string;
+  noteId?: string;
 }
 
 export function MarkdownRenderer({
   content,
   className = '',
+  noteId,
 }: MarkdownRendererProps) {
   return (
     <div
@@ -20,7 +22,7 @@ export function MarkdownRenderer({
         remarkPlugins={[remarkGfm]}
         components={{
           img: ({ src, alt, ...props }) => (
-            <MarkdownImage src={src} alt={alt} {...props} />
+            <MarkdownImage src={src} alt={alt} noteId={noteId} {...props} />
           ),
           h1: ({ children, ...props }) => (
             <h1
@@ -155,7 +157,7 @@ export function MarkdownRenderer({
             </td>
           ),
           a: ({ children, href, ...props }) => (
-            <AttachmentLink href={href} {...props}>
+            <AttachmentLink href={href} noteId={noteId} {...props}>
               {children}
             </AttachmentLink>
           ),

@@ -16,6 +16,7 @@ export interface UseResolvedAttachmentUrlResult {
 
 export function useResolvedAttachmentUrl(
   path?: string,
+  noteId?: string,
   sub?: string
 ): UseResolvedAttachmentUrlResult {
   const [status, setStatus] = useState<AttachmentStatus>(
@@ -37,7 +38,7 @@ export function useResolvedAttachmentUrl(
     setError(null);
 
     attachmentResolver
-      .acquire(path, sub)
+      .acquire(path, noteId, sub)
       .then((resolvedUrl) => {
         if (isMounted) {
           setUrl(resolvedUrl);
@@ -47,15 +48,19 @@ export function useResolvedAttachmentUrl(
       .catch((err) => {
         if (isMounted) {
           setStatus('missing');
-          setError(err instanceof Error ? err.message : 'Attachment missing');
+          setError(
+            err instanceof Error
+              ? err.message
+              : "This attachment isn't available on this device."
+          );
         }
       });
 
     return () => {
       isMounted = false;
-      attachmentResolver.release(path, sub);
+      attachmentResolver.release(path, noteId, sub);
     };
-  }, [path, sub]);
+  }, [path, noteId, sub]);
 
   return { status, url, error };
 }

@@ -138,12 +138,15 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
   // Load note-scoped attachments on active note change
   useEffect(() => {
     if (!activeNoteId || !user.sub) return;
-    attachmentRepository.findByNoteId(activeNoteId, user.sub).then((stored) => {
-      setAttachments((prev) => ({
-        ...prev,
-        [activeNoteId]: stored,
-      }));
-    }).catch(console.error);
+    attachmentRepository
+      .findByNoteId(activeNoteId, user.sub)
+      .then((stored) => {
+        setAttachments((prev) => ({
+          ...prev,
+          [activeNoteId]: stored,
+        }));
+      })
+      .catch(console.error);
   }, [activeNoteId, user.sub]);
 
   // Subscribe to editor save state changes
@@ -285,9 +288,10 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
     [notes]
   );
 
-  // Set active user sub for attachments
+  // Set active user sub for attachments & resume durable upload queue
   useEffect(() => {
     attachmentRepository.setActiveSub(user.sub);
+    attachmentUploadService.resumeQueueFromStorage(user.sub);
   }, [user.sub]);
 
   // Draft recovery check
@@ -720,7 +724,10 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
         try {
           await attachmentRepository.deleteAttachmentsByNoteId(n.id, user.sub);
         } catch (err) {
-          console.error(`Failed to clean up attachments for note ${n.id}:`, err);
+          console.error(
+            `Failed to clean up attachments for note ${n.id}:`,
+            err
+          );
         }
       }
       const nextNotes = noteOrganizationService.emptyTrash(notes);
@@ -765,26 +772,41 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
 
     try {
       setSyncState('syncing');
-      const { attachments: newAttachments, markdownSyntax, errors } =
-        await attachmentService.processMultipleFiles(
-          files,
-          activeNote.id,
-          user.sub
-        );
+      const {
+        attachments: newAttachments,
+        markdownSyntax,
+        errors,
+      } = await attachmentService.processMultipleFiles(
+        files,
+        activeNote.id,
+        user.sub
+      );
 
       if (newAttachments.length > 0) {
-        setAttachments((prev) => ({
-          ...prev,
-          [activeNote.id]: [...(prev[activeNote.id] || []), ...newAttachments],
-        }));
+        try {
+          // CodeMirror authority invariant: insert via CodeMirror transaction if available
+          if (editorRef.current) {
+            editorRef.current.insertText(`\n\n${markdownSyntax}\n`);
+          } else {
+            handleUpdateNote({
+              content: (activeNote.content || '') + `\n\n${markdownSyntax}\n`,
+            });
+          }
 
-        // CodeMirror authority invariant: insert via CodeMirror transaction if available
-        if (editorRef.current) {
-          editorRef.current.insertText(`\n\n${markdownSyntax}\n`);
-        } else {
-          handleUpdateNote({
-            content: (activeNote.content || '') + `\n\n${markdownSyntax}\n`,
-          });
+          setAttachments((prev) => ({
+            ...prev,
+            [activeNote.id]: [...(prev[activeNote.id] || []), ...newAttachments],
+          }));
+        } catch (insertErr) {
+          // Invariant 9: Clean up newly created orphan if initial Markdown insertion fails
+          for (const att of newAttachments) {
+            await attachmentRepository.deleteAttachment(
+              user.sub,
+              att.noteId,
+              att.logicalPath
+            );
+          }
+          throw insertErr;
         }
       }
 
@@ -798,7 +820,9 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
     } catch (err) {
       console.error('Failed to attach file(s):', err);
       setSyncState('saved_locally');
-      alert(err instanceof Error ? err.message : 'Failed to process attachment.');
+      alert(
+        err instanceof Error ? err.message : 'Failed to process attachment.'
+      );
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
@@ -1165,7 +1189,10 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
                       )}
                     </div>
                     <div className="flex-1 h-1/2 md:h-full overflow-y-auto bg-stack-surface/30">
-                      <MarkdownPreview content={activeNote.content || ''} />
+                      <MarkdownPreview
+                        content={activeNote.content || ''}
+                        noteId={activeNote.id}
+                      />
                     </div>
                   </div>
                 )}
@@ -1173,7 +1200,10 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
                 {/* Read Mode */}
                 {editorMode === 'read' && (
                   <div className="flex-1 h-full overflow-y-auto bg-stack-surface/20">
-                    <MarkdownPreview content={activeNote.content || ''} />
+                    <MarkdownPreview
+                      content={activeNote.content || ''}
+                      noteId={activeNote.id}
+                    />
                   </div>
                 )}
 

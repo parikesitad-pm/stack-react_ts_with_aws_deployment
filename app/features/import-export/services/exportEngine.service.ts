@@ -49,7 +49,12 @@ export const exportEngineService = {
     if (noteAttachments.length > 0) {
       const assetsFolder = zip.folder('assets');
       for (const att of noteAttachments) {
-        const blob = await attachmentRepository.getAttachmentBlob(att.logicalPath);
+        const sub = attachmentRepository.getActiveSub() || '';
+        const blob = await attachmentRepository.getAttachmentBlob(
+          sub,
+          att.noteId,
+          att.logicalPath
+        );
         if (blob) {
           assetsFolder?.file(att.fileName, blob);
         }
@@ -87,8 +92,13 @@ export const exportEngineService = {
     }
 
     // Add all assets & attachments
+    const sub = attachmentRepository.getActiveSub() || '';
     for (const att of attachments) {
-      const blob = await attachmentRepository.getAttachmentBlob(att.logicalPath);
+      const blob = await attachmentRepository.getAttachmentBlob(
+        sub,
+        att.noteId,
+        att.logicalPath
+      );
       if (blob) {
         if (att.mimeType.startsWith('image/')) {
           assetsFolder?.file(att.fileName, blob);

@@ -15,11 +15,17 @@ export interface ResolvedAttachment {
 }
 
 export class AttachmentResolverService {
+  private requestKeyToCacheKey = new Map<string, string>();
+
   /**
    * Acquire a browser-safe URL for a given attachment path.
-   * Increments the reference count in objectUrlCache.
+   * Increments the reference count in objectUrlCache using canonical key `${sub}:${attachmentId}`.
    */
-  async acquire(path: string, subOverride?: string): Promise<string> {
+  async acquire(
+    path: string,
+    noteId?: string,
+    subOverride?: string
+  ): Promise<string> {
     if (!path) return '';
 
     // Direct HTTP/HTTPS or data URLs don't need object URL wrapping
@@ -40,36 +46,59 @@ export class AttachmentResolverService {
 
     // Normalize path (ensure leading ./)
     const normalizedPath = path.startsWith('./') ? path : `./${path}`;
-    const cacheKey = `${sub}:${normalizedPath}`;
+    const requestKey = `${sub}:${noteId || 'global'}:${normalizedPath}`;
 
-    // Query IndexedDB local Blob
-    const stored = await attachmentRepository.getAttachment(
-      normalizedPath,
-      sub
-    );
+    // 1. Query IndexedDB local Blob scoped to note boundary if noteId is available
+    let stored = noteId
+      ? await attachmentRepository.getAttachmentByPath(
+          sub,
+          noteId,
+          normalizedPath
+        )
+      : null;
+
+    if (!stored && noteId) {
+      const altPath = normalizedPath.replace(/^\.\//, '');
+      stored = await attachmentRepository.getAttachmentByPath(
+        sub,
+        noteId,
+        altPath
+      );
+    }
+
+    // Fallback: search across all attachments for this path
+    if (!stored) {
+      stored = await attachmentRepository.getAttachment(normalizedPath, sub);
+    }
+
     if (stored && stored.blob) {
+      const attachmentId =
+        stored.attachment?.id || `file_${encodeURIComponent(normalizedPath)}`;
+      const cacheKey = `${sub}:${attachmentId}`;
+      this.requestKeyToCacheKey.set(requestKey, cacheKey);
+
       return objectUrlCache.acquire(cacheKey, sub, () => {
         return URL.createObjectURL(stored.blob);
       });
     }
 
-    // Try without leading ./ if needed
-    const altPath = path.replace(/^\.\//, '');
-    const storedAlt = await attachmentRepository.getAttachment(altPath, sub);
-    if (storedAlt && storedAlt.blob) {
-      return objectUrlCache.acquire(cacheKey, sub, () => {
-        return URL.createObjectURL(storedAlt.blob);
-      });
+    // 2. Cloud resolution fallback:
+    // If local Blob is missing, but attachment has storageKey and backend API is active
+    if (stored && stored.attachment?.storageKey) {
+      // Invariant: Authenticated cloud download can be fetched here,
+      // but NEVER persist signed download URLs into local IndexedDB.
+      // If temporary cloud download fails or is unavailable, report missing fallback:
     }
 
-    throw new Error(`Attachment not found: ${path}`);
+    // 3. Fallback visual missing message:
+    throw new Error(`This attachment isn't available on this device.`);
   }
 
   /**
    * Release an acquired attachment URL.
    * Decrements the reference count and revokes when refCount is 0.
    */
-  release(path: string, subOverride?: string): void {
+  release(path: string, noteId?: string, subOverride?: string): void {
     if (!path) return;
 
     if (
@@ -84,9 +113,16 @@ export class AttachmentResolverService {
     if (!sub) return;
 
     const normalizedPath = path.startsWith('./') ? path : `./${path}`;
-    const cacheKey = `${sub}:${normalizedPath}`;
+    const requestKey = `${sub}:${noteId || 'global'}:${normalizedPath}`;
 
-    objectUrlCache.release(cacheKey);
+    const cacheKey = this.requestKeyToCacheKey.get(requestKey);
+    if (cacheKey) {
+      objectUrlCache.release(cacheKey);
+      this.requestKeyToCacheKey.delete(requestKey);
+    } else {
+      // Fallback: try direct release by path
+      objectUrlCache.release(`${sub}:${normalizedPath}`);
+    }
   }
 
   /**

@@ -45,6 +45,11 @@ export function getWorkspaceDbName(sub: string): string {
   return `stack_user_${hashSub(sub)}`;
 }
 
+export function buildAttachmentKey(noteId: string, logicalPath: string): string {
+  const normalized = logicalPath.startsWith('./') ? logicalPath : `./${logicalPath}`;
+  return `${noteId}::${normalized}`;
+}
+
 // In-memory fallback partition store for tests and SSR
 interface MemoryPartition {
   notes: Note[];
@@ -310,6 +315,29 @@ export const userWorkspaceStorage = {
     }
   },
 
+  async getAttachmentByNoteAndPath(
+    sub: string,
+    noteId: string,
+    logicalPath: string
+  ): Promise<{ blob: Blob; mimeType: string; attachment?: Attachment } | null> {
+    const key = buildAttachmentKey(noteId, logicalPath);
+    let result = await this.getAttachment(sub, key);
+    if (!result) {
+      const altPath = logicalPath.startsWith('./')
+        ? logicalPath.slice(2)
+        : `./${logicalPath}`;
+      result = await this.getAttachment(sub, buildAttachmentKey(noteId, altPath));
+    }
+    if (!result) {
+      // Fallback: check legacy un-scoped key
+      result = await this.getAttachment(sub, logicalPath);
+      if (result && result.attachment && result.attachment.noteId !== noteId) {
+        result = null; // Do not leak other note's attachment
+      }
+    }
+    return result;
+  },
+
   async getAllAttachments(sub: string): Promise<StoredAttachment[]> {
     try {
       const db = await openUserDb(sub);
@@ -330,7 +358,9 @@ export const userWorkspaceStorage = {
     noteId: string
   ): Promise<StoredAttachment[]> {
     const all = await this.getAllAttachments(sub);
-    return all.filter((a) => a.attachment?.noteId === noteId);
+    return all.filter(
+      (a) => a.attachment?.noteId === noteId || a.path.startsWith(`${noteId}::`)
+    );
   },
 
   async saveAttachment(
@@ -373,6 +403,19 @@ export const userWorkspaceStorage = {
         req.onerror = () => reject(req.error);
       });
     }
+  },
+
+  async deleteAttachmentByNoteAndPath(
+    sub: string,
+    noteId: string,
+    logicalPath: string
+  ): Promise<void> {
+    const key = buildAttachmentKey(noteId, logicalPath);
+    await this.deleteAttachment(sub, key);
+    const altPath = logicalPath.startsWith('./')
+      ? logicalPath.slice(2)
+      : `./${logicalPath}`;
+    await this.deleteAttachment(sub, buildAttachmentKey(noteId, altPath));
   },
 
   async deleteAttachmentsByNote(sub: string, noteId: string): Promise<void> {

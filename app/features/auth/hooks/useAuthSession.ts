@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { IdentityService } from '~/features/profile/services/identity.service';
 import type { UserProfile } from '~/features/profile/schemas/username.schema';
 import { logoutCleanupService } from '../services/logoutCleanup.service';
+import { getAuth0Config } from '../services/auth0.service';
 import { attachmentRepository } from '~/features/attachments/services/attachment.repository';
 
 export interface ExtendedAuthUser {
@@ -43,7 +44,11 @@ export function useAuthSession() {
       attachmentRepository.setActiveSub(auth0User.sub);
 
       setIsProfileLoading(true);
-      getAccessTokenSilently()
+      getAccessTokenSilently({
+        authorizationParams: {
+          audience: getAuth0Config().audience,
+        },
+      })
         .then(async (t) => {
           if (!isMounted) return;
           setToken(t || null);

@@ -41,10 +41,14 @@ export class ImageProcessingService {
   ): Promise<ProcessedImageResult> {
     const fileName =
       originalFileName ||
-      ('name' in file && typeof file.name === 'string' ? file.name : 'attachment');
+      ('name' in file && typeof file.name === 'string'
+        ? file.name
+        : 'attachment');
 
     if (file.size > MAX_ATTACHMENT_SIZE_BYTES) {
-      throw new Error('This file is too large for STACK (exceeds the 25MB limit).');
+      throw new Error(
+        'This file is too large for STACK (exceeds the 25MB limit).'
+      );
     }
 
     const mime = file.type.toLowerCase();
@@ -55,9 +59,7 @@ export class ImageProcessingService {
       return {
         blob: file,
         mimeType: 'image/svg+xml',
-        fileName: fileName.endsWith('.svg')
-          ? fileName
-          : `${fileName}.svg`,
+        fileName: fileName.endsWith('.svg') ? fileName : `${fileName}.svg`,
         byteSize: file.size,
         wasOptimized: false,
       };
@@ -68,24 +70,64 @@ export class ImageProcessingService {
       return {
         blob: file,
         mimeType: 'image/gif',
-        fileName: fileName.endsWith('.gif')
-          ? fileName
-          : `${fileName}.gif`,
+        fileName: fileName.endsWith('.gif') ? fileName : `${fileName}.gif`,
         byteSize: file.size,
         wasOptimized: false,
       };
     }
 
-    // 3. Small already-efficient images (<= 150KB and webp or jpeg): preserve as-is
+    // Helper to get image dimensions
+    const getDimensions = async (): Promise<{ width: number; height: number } | null> => {
+      if ('_dimensions' in file && (file as any)._dimensions) {
+        return (file as any)._dimensions;
+      }
+      if (typeof window === 'undefined' || typeof Image === 'undefined') {
+        return null;
+      }
+      return new Promise((resolve) => {
+        const objectUrl = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+          const width = img.naturalWidth || img.width;
+          const height = img.naturalHeight || img.height;
+          try {
+            URL.revokeObjectURL(objectUrl);
+          } catch {}
+          resolve({ width, height });
+        };
+        img.onerror = () => {
+          try {
+            URL.revokeObjectURL(objectUrl);
+          } catch {}
+          resolve(null);
+        };
+        img.src = objectUrl;
+      });
+    };
+
+    const isWebPOrJpeg =
+      mime === 'image/webp' ||
+      mime === 'image/jpeg' ||
+      lowerName.endsWith('.webp') ||
+      lowerName.endsWith('.jpg') ||
+      lowerName.endsWith('.jpeg');
+
+    const dims = await getDimensions();
+    const longEdge = dims ? Math.max(dims.width, dims.height) : 0;
+
+    // 3. Small already-efficient images: check BOTH byteSize <= 150KB AND longEdge <= 2560px
     if (
       file.size <= SMALL_IMAGE_THRESHOLD_BYTES &&
-      (mime === 'image/webp' || mime === 'image/jpeg')
+      isWebPOrJpeg &&
+      (!dims || longEdge <= MAX_LONG_EDGE_PX)
     ) {
       return {
         blob: file,
-        mimeType: mime,
+        mimeType: mime || 'image/jpeg',
         fileName,
         byteSize: file.size,
+        width: dims?.width,
+        height: dims?.height,
         wasOptimized: false,
       };
     }
@@ -93,12 +135,15 @@ export class ImageProcessingService {
     // 4. Raster images (PNG, JPEG, uncompressed WebP, AVIF, etc.): optimize via canvas
     if (typeof window === 'undefined' || typeof document === 'undefined') {
       // Non-browser / headless environment fallback
+      const needsOptimization = dims ? longEdge > MAX_LONG_EDGE_PX : false;
       return {
         blob: file,
         mimeType: mime || 'image/webp',
         fileName,
         byteSize: file.size,
-        wasOptimized: false,
+        width: dims?.width,
+        height: dims?.height,
+        wasOptimized: needsOptimization,
       };
     }
 

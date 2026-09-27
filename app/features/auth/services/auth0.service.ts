@@ -33,7 +33,7 @@ export function getAuth0Config(): Auth0Config {
   const audience =
     (typeof import.meta !== 'undefined' &&
       import.meta.env?.VITE_AUTH0_AUDIENCE) ||
-    'https://api.stack.modula';
+    'urn:stack:api';
 
   const redirectUri =
     typeof window !== 'undefined'

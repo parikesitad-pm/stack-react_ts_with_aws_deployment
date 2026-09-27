@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useMemo, useCallback } from 'react';
 import { IdentityService } from '../services/identity.service';
+import { getAuth0Config } from '~/features/auth/services/auth0.service';
 import type { UserProfile } from '../schemas/username.schema';
 
 export function useCurrentUserProfile() {
@@ -21,9 +22,14 @@ export function useCurrentUserProfile() {
       if (!sub) return null;
       let token = '';
       try {
-        const t = await getAccessTokenSilently();
+        const t = await getAccessTokenSilently({
+          authorizationParams: {
+            audience: getAuth0Config().audience,
+          },
+        });
         if (t) token = t;
-      } catch {
+      } catch (err) {
+        console.warn('[useCurrentUserProfile] getAccessTokenSilently error:', err);
         if (IdentityService.isDevOrTest()) {
           token = sub;
         }
@@ -38,7 +44,11 @@ export function useCurrentUserProfile() {
   const getEffectiveToken = useCallback(async (): Promise<string> => {
     if (!sub) throw new Error('AUTH_REQUIRED');
     try {
-      const token = await getAccessTokenSilently();
+      const token = await getAccessTokenSilently({
+        authorizationParams: {
+          audience: getAuth0Config().audience,
+        },
+      });
       if (token) return token;
     } catch {}
     if (IdentityService.isDevOrTest()) return sub;

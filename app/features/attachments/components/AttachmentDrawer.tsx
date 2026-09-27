@@ -89,7 +89,8 @@ export function AttachmentDrawer({
                         {att.fileName}
                       </p>
                       <p className="text-[10px] text-stack-steel">
-                        {(att.byteSize / 1024).toFixed(1)} KB · {att.logicalPath}
+                        {(att.byteSize / 1024).toFixed(1)} KB ·{' '}
+                        {att.logicalPath}
                       </p>
                     </div>
                   </div>

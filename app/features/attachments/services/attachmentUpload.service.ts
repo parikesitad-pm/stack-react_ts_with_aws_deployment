@@ -5,7 +5,12 @@
  */
 
 import type { Attachment } from '../types/attachment.types';
-import { hashSub } from '~/features/workspace/services/userWorkspaceStorage';
+import {
+  userWorkspaceStorage,
+  buildAttachmentKey,
+  hashSub,
+} from '~/features/workspace/services/userWorkspaceStorage';
+import { getStackApiBaseUrl } from '~/features/api/stackApiFetch';
 
 export interface UploadQueueItem {
   attachment: Attachment;
@@ -20,6 +25,7 @@ class AttachmentUploadService {
   private queue = new Map<string, UploadQueueItem>();
   private isProcessing = false;
   private networkStatus: NetworkStatus = 'online';
+  private activeSub: string | null = null;
   private statusListeners = new Set<
     (status: NetworkStatus, pendingCount: number) => void
   >();
@@ -30,6 +36,10 @@ class AttachmentUploadService {
       window.addEventListener('online', () => this.handleNetworkChange(true));
       window.addEventListener('offline', () => this.handleNetworkChange(false));
     }
+  }
+
+  setActiveSub(sub: string | null): void {
+    this.activeSub = sub;
   }
 
   subscribe(
@@ -55,10 +65,7 @@ class AttachmentUploadService {
   }
 
   isCloudConfigured(): boolean {
-    return (
-      typeof import.meta !== 'undefined' &&
-      Boolean(import.meta.env?.VITE_API_BASE_URL)
-    );
+    return Boolean(getStackApiBaseUrl());
   }
 
   getStatus() {
@@ -79,9 +86,58 @@ class AttachmentUploadService {
   }
 
   /**
+   * Resume pending queued uploads from durable IndexedDB storage
+   * Scans for records with cloudState === 'queued'
+   */
+  async resumeQueueFromStorage(sub: string): Promise<void> {
+    if (!sub) return;
+    this.activeSub = sub;
+    try {
+      const storedList = await userWorkspaceStorage.getAllAttachments(sub);
+      for (const stored of storedList) {
+        if (
+          stored.attachment &&
+          stored.attachment.cloudState === 'queued' &&
+          !this.queue.has(stored.attachment.id)
+        ) {
+          this.queue.set(stored.attachment.id, {
+            attachment: stored.attachment,
+            blob: stored.blob,
+            sub,
+            attempts: 0,
+          });
+        }
+      }
+      this.notify();
+      if (this.queue.size > 0 && this.networkStatus === 'online') {
+        this.processQueue();
+      }
+    } catch (err) {
+      console.warn('[AttachmentUpload] Failed to resume queue from storage:', err);
+    }
+  }
+
+  /**
+   * Explicitly retry all failed or queued uploads
+   */
+  async retryQueued(sub: string): Promise<void> {
+    if (!sub) return;
+    await this.resumeQueueFromStorage(sub);
+    for (const item of this.queue.values()) {
+      if (item.sub === sub) {
+        item.attempts = 0;
+        item.attachment.cloudState = 'queued';
+      }
+    }
+    this.notify();
+    this.processQueue();
+  }
+
+  /**
    * Enqueue attachment for cloud upload
    */
   enqueue(sub: string, attachment: Attachment, blob: Blob): void {
+    this.activeSub = sub;
     if (!this.isCloudConfigured()) {
       attachment.cloudState = 'local-only';
       return;
@@ -116,10 +172,17 @@ class AttachmentUploadService {
     if (isOnline) {
       this.networkStatus = 'reconnecting';
       this.notify();
-      this.processQueue().then(() => {
-        this.networkStatus = 'online';
-        this.notify();
-      });
+      if (this.activeSub) {
+        this.resumeQueueFromStorage(this.activeSub).then(() => {
+          this.networkStatus = 'online';
+          this.notify();
+        });
+      } else {
+        this.processQueue().then(() => {
+          this.networkStatus = 'online';
+          this.notify();
+        });
+      }
     } else {
       this.networkStatus = 'offline';
       this.notify();
@@ -181,6 +244,20 @@ class AttachmentUploadService {
           );
           item.attachment.cloudState = item.attempts >= 3 ? 'failed' : 'queued';
         }
+
+        try {
+          const storageKey = buildAttachmentKey(
+            item.attachment.noteId,
+            item.attachment.logicalPath
+          );
+          await userWorkspaceStorage.saveAttachment(
+            item.sub,
+            storageKey,
+            item.blob,
+            item.attachment.mimeType,
+            item.attachment
+          );
+        } catch {}
       }
     } finally {
       this.isProcessing = false;

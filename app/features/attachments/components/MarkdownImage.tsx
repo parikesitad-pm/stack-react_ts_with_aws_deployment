@@ -4,15 +4,17 @@ import { MissingAttachment } from './MissingAttachment';
 export interface MarkdownImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src?: string;
   alt?: string;
+  noteId?: string;
 }
 
 export function MarkdownImage({
   src,
   alt = '',
+  noteId,
   className = '',
   ...props
 }: MarkdownImageProps) {
-  const { status, url } = useResolvedAttachmentUrl(src);
+  const { status, url } = useResolvedAttachmentUrl(src, noteId);
 
   if (status === 'resolving') {
     return (

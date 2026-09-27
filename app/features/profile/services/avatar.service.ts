@@ -1,6 +1,7 @@
 import { hashSub } from '~/features/workspace/services/userWorkspaceStorage';
 import { IdentityService } from './identity.service';
 import type { UserProfile } from '../schemas/username.schema';
+import { stackApiFetch } from '~/features/api/stackApiFetch';
 
 export interface ProcessedAvatarResult {
   blob: Blob;
@@ -112,12 +113,8 @@ export class AvatarService {
     const apiBase = IdentityService.getApiBaseUrl();
     if (apiBase) {
       // 1. Get presigned upload URL
-      const presignRes = await fetch(`${apiBase}/me/avatar/upload-url`, {
+      const presignRes = await stackApiFetch('/me/avatar/upload-url', token, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           contentType: 'image/webp',
           key: avatarKey,
@@ -144,12 +141,8 @@ export class AvatarService {
       }
 
       // 3. Commit avatarKey & avatarVersion to profile
-      const commitRes = await fetch(`${apiBase}/me/avatar/commit`, {
+      const commitRes = await stackApiFetch('/me/avatar/commit', token, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           avatarKey,
           avatarVersion: version,
