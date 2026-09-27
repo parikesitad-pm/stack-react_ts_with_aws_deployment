@@ -4,6 +4,7 @@ export default [
   index('routes/landing.tsx'),
   route('docs', 'routes/docs.tsx'),
   route('help', 'routes/help.tsx'),
+  route('how-to-use', 'routes/how-to-use.tsx'),
   route('changelog', 'routes/changelog.tsx'),
   route('modula-project', 'routes/modula-project.tsx'),
   route('auth/login', 'routes/auth.login.tsx'),

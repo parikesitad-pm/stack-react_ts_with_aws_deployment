@@ -6,7 +6,7 @@ export interface LandingContent {
 }
 
 export const DEFAULT_LANDING_CONTENT: LandingContent = {
-  badge: 'STACK v0.3.0 · A Modula Project',
+  badge: 'STACK v0.9.0 · A Modula Project',
   headline: 'MARKDOWN-FIRST.',
   subheadline: 'LOCAL-FIRST BY DESIGN.',
   description:

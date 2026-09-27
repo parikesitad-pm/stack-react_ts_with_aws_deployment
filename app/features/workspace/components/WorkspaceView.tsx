@@ -804,7 +804,10 @@ export function WorkspaceView({
 
           setAttachments((prev) => ({
             ...prev,
-            [activeNote.id]: [...(prev[activeNote.id] || []), ...newAttachments],
+            [activeNote.id]: [
+              ...(prev[activeNote.id] || []),
+              ...newAttachments,
+            ],
           }));
         } catch (insertErr) {
           // Invariant 9: Clean up newly created orphan if initial Markdown insertion fails
@@ -917,289 +920,248 @@ export function WorkspaceView({
       <div className="flex flex-1 overflow-hidden relative">
         {/* Hidden File Input for Attachments */}
         <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        className="hidden"
-        onChange={handleFileInputChange}
-      />
+          ref={fileInputRef}
+          type="file"
+          multiple
+          className="hidden"
+          onChange={handleFileInputChange}
+        />
 
-      {/* Desktop Persistent Sidebar */}
-      <AppSidebar
-        notes={notes}
-        folders={folders}
-        activeNoteId={activeNoteId}
-        onSelectNote={handleSelectNote}
-        onCreateNote={() => handleCreateNote()}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-        onOpenProfile={() => setIsProfileOpen(true)}
-        onOpenImportExport={() => setIsImportExportOpen(true)}
-        onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
-        syncState={syncState}
-        activeFilter={activeFilter}
-        onFilterChange={setActiveFilter}
-        layoutMode={layoutMode}
-        onLayoutModeChange={handleLayoutModeChange}
-        onMoveNoteToFolder={handleMoveNoteToFolder}
-        onReorderNote={handleReorderNote}
-        onMoveFolder={handleMoveFolder}
-        onReorderFolder={handleReorderFolder}
-        onCreateFolder={handleCreateFolder}
-        onRenameFolder={handleRenameFolder}
-        onSafeDeleteFolder={handleSafeDeleteFolder}
-        onTogglePin={handleTogglePin}
-        onArchiveNote={handleArchiveNote}
-        onUnarchiveNote={handleUnarchiveNote}
-        onTrashNote={handleMoveToTrash}
-        onRestoreNote={handleRestoreFromTrash}
-        onPermanentDeleteNote={handlePermanentDelete}
-        onEmptyTrash={handleEmptyTrash}
-        user={user}
-        onSignOut={handleSignOut}
-        canInstallPwa={isInstallable}
-        onInstallPwa={triggerInstall}
-        className="hidden md:flex"
-      />
+        {/* Desktop Persistent Sidebar */}
+        <AppSidebar
+          notes={notes}
+          folders={folders}
+          activeNoteId={activeNoteId}
+          onSelectNote={handleSelectNote}
+          onCreateNote={() => handleCreateNote()}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          onOpenProfile={() => setIsProfileOpen(true)}
+          onOpenImportExport={() => setIsImportExportOpen(true)}
+          onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+          syncState={syncState}
+          activeFilter={activeFilter}
+          onFilterChange={setActiveFilter}
+          layoutMode={layoutMode}
+          onLayoutModeChange={handleLayoutModeChange}
+          onMoveNoteToFolder={handleMoveNoteToFolder}
+          onReorderNote={handleReorderNote}
+          onMoveFolder={handleMoveFolder}
+          onReorderFolder={handleReorderFolder}
+          onCreateFolder={handleCreateFolder}
+          onRenameFolder={handleRenameFolder}
+          onSafeDeleteFolder={handleSafeDeleteFolder}
+          onTogglePin={handleTogglePin}
+          onArchiveNote={handleArchiveNote}
+          onUnarchiveNote={handleUnarchiveNote}
+          onTrashNote={handleMoveToTrash}
+          onRestoreNote={handleRestoreFromTrash}
+          onPermanentDeleteNote={handlePermanentDelete}
+          onEmptyTrash={handleEmptyTrash}
+          user={user}
+          onSignOut={handleSignOut}
+          canInstallPwa={isInstallable}
+          onInstallPwa={triggerInstall}
+          className="hidden md:flex"
+        />
 
-      {/* Mobile Drawer Sidebar */}
-      {isMobileSidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-stack-bg/80 backdrop-blur-sm md:hidden"
-          onClick={() => setIsMobileSidebarOpen(false)}
-        >
+        {/* Mobile Drawer Sidebar */}
+        {isMobileSidebarOpen && (
           <div
-            className="w-72 h-full bg-stack-surface shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-40 bg-stack-bg/80 backdrop-blur-sm md:hidden"
+            onClick={() => setIsMobileSidebarOpen(false)}
           >
-            <AppSidebar
-              notes={notes}
-              folders={folders}
-              activeNoteId={activeNoteId}
-              onSelectNote={(id) => {
-                handleSelectNote(id);
-                setIsMobileSidebarOpen(false);
-              }}
-              onCreateNote={() => {
-                handleCreateNote();
-                setIsMobileSidebarOpen(false);
-              }}
-              onOpenSettings={() => {
-                setIsSettingsOpen(true);
-                setIsMobileSidebarOpen(false);
-              }}
-              onOpenProfile={() => {
-                setIsProfileOpen(true);
-                setIsMobileSidebarOpen(false);
-              }}
-              onOpenImportExport={() => {
-                setIsImportExportOpen(true);
-                setIsMobileSidebarOpen(false);
-              }}
-              onOpenCommandPalette={() => {
-                setIsCommandPaletteOpen(true);
-                setIsMobileSidebarOpen(false);
-              }}
-              syncState={syncState}
-              activeFilter={activeFilter}
-              onFilterChange={(f) => {
-                setActiveFilter(f);
-                setIsMobileSidebarOpen(false);
-              }}
-              layoutMode="expanded"
-              onLayoutModeChange={() => {}}
-              onMoveNoteToFolder={handleMoveNoteToFolder}
-              onReorderNote={handleReorderNote}
-              onMoveFolder={handleMoveFolder}
-              onReorderFolder={handleReorderFolder}
-              onCreateFolder={handleCreateFolder}
-              onRenameFolder={handleRenameFolder}
-              onSafeDeleteFolder={handleSafeDeleteFolder}
-              onTogglePin={handleTogglePin}
-              onArchiveNote={handleArchiveNote}
-              onUnarchiveNote={handleUnarchiveNote}
-              onTrashNote={handleMoveToTrash}
-              onRestoreNote={handleRestoreFromTrash}
-              onPermanentDeleteNote={handlePermanentDelete}
-              onEmptyTrash={handleEmptyTrash}
-              user={user}
-              onSignOut={handleSignOut}
-              canInstallPwa={isInstallable}
-              onInstallPwa={triggerInstall}
-              className="flex w-full h-full"
-            />
+            <div
+              className="w-72 h-full bg-stack-surface shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <AppSidebar
+                notes={notes}
+                folders={folders}
+                activeNoteId={activeNoteId}
+                onSelectNote={(id) => {
+                  handleSelectNote(id);
+                  setIsMobileSidebarOpen(false);
+                }}
+                onCreateNote={() => {
+                  handleCreateNote();
+                  setIsMobileSidebarOpen(false);
+                }}
+                onOpenSettings={() => {
+                  setIsSettingsOpen(true);
+                  setIsMobileSidebarOpen(false);
+                }}
+                onOpenProfile={() => {
+                  setIsProfileOpen(true);
+                  setIsMobileSidebarOpen(false);
+                }}
+                onOpenImportExport={() => {
+                  setIsImportExportOpen(true);
+                  setIsMobileSidebarOpen(false);
+                }}
+                onOpenCommandPalette={() => {
+                  setIsCommandPaletteOpen(true);
+                  setIsMobileSidebarOpen(false);
+                }}
+                syncState={syncState}
+                activeFilter={activeFilter}
+                onFilterChange={(f) => {
+                  setActiveFilter(f);
+                  setIsMobileSidebarOpen(false);
+                }}
+                layoutMode="expanded"
+                onLayoutModeChange={() => {}}
+                onMoveNoteToFolder={handleMoveNoteToFolder}
+                onReorderNote={handleReorderNote}
+                onMoveFolder={handleMoveFolder}
+                onReorderFolder={handleReorderFolder}
+                onCreateFolder={handleCreateFolder}
+                onRenameFolder={handleRenameFolder}
+                onSafeDeleteFolder={handleSafeDeleteFolder}
+                onTogglePin={handleTogglePin}
+                onArchiveNote={handleArchiveNote}
+                onUnarchiveNote={handleUnarchiveNote}
+                onTrashNote={handleMoveToTrash}
+                onRestoreNote={handleRestoreFromTrash}
+                onPermanentDeleteNote={handlePermanentDelete}
+                onEmptyTrash={handleEmptyTrash}
+                user={user}
+                onSignOut={handleSignOut}
+                canInstallPwa={isInstallable}
+                onInstallPwa={triggerInstall}
+                className="flex w-full h-full"
+              />
+            </div>
           </div>
-        </div>
-      )}
-
-      {/* Main Workspace Column */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Zen Mode Exit Button */}
-        {layoutMode === 'zen' && (
-          <ZenModeExitButton
-            onExit={() => handleLayoutModeChange('expanded')}
-          />
         )}
 
-        {notes.length > 0 && activeNote ? (
-          <>
-            {/* Header Bar */}
-            <AppHeader
-              title={activeNote.title || 'Untitled'}
-              onTitleChange={(newTitle) =>
-                handleUpdateNote({ title: newTitle })
-              }
-              tags={activeNote.tags || []}
-              isPinned={activeNote.isPinned || false}
-              onTogglePin={() => handleTogglePin(activeNote.id)}
-              onDeleteNote={() => handleMoveToTrash(activeNote.id)}
-              editorMode={editorMode}
-              onModeChange={setEditorMode}
-              onToggleMobileSidebar={() => setIsMobileSidebarOpen(true)}
-              onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
-              onToggleAttachments={() =>
-                setIsAttachmentDrawerOpen((prev) => !prev)
-              }
-              onToggleOutline={() => setIsOutlineOpen((prev) => !prev)}
-              isOutlineOpen={isOutlineOpen}
-              onOpenImportExport={() => setIsImportExportOpen(true)}
-              onOpenProfile={() => setIsProfileOpen(true)}
-              attachmentCount={currentAttachments.length}
-              syncState={syncState}
-              wordCount={wordCount}
-              charCount={charCount}
-              readingTimeMinutes={readingTimeMinutes}
+        {/* Main Workspace Column */}
+        <div className="flex flex-1 flex-col overflow-hidden">
+          {/* Zen Mode Exit Button */}
+          {layoutMode === 'zen' && (
+            <ZenModeExitButton
+              onExit={() => handleLayoutModeChange('expanded')}
             />
+          )}
 
-            {/* Note Status Banner for Archive & Trash */}
-            {isNoteTrashed && (
-              <div className="flex items-center justify-between bg-red-950/70 border-b border-red-800/60 px-4 py-2 font-mono text-xs text-red-200">
-                <div className="flex items-center gap-2">
-                  <Trash2 className="h-4 w-4 text-red-400" />
-                  <span>This note is in the Trash. Editing is disabled.</span>
+          {notes.length > 0 && activeNote ? (
+            <>
+              {/* Header Bar */}
+              <AppHeader
+                title={activeNote.title || 'Untitled'}
+                onTitleChange={(newTitle) =>
+                  handleUpdateNote({ title: newTitle })
+                }
+                tags={activeNote.tags || []}
+                isPinned={activeNote.isPinned || false}
+                onTogglePin={() => handleTogglePin(activeNote.id)}
+                onDeleteNote={() => handleMoveToTrash(activeNote.id)}
+                editorMode={editorMode}
+                onModeChange={setEditorMode}
+                onToggleMobileSidebar={() => setIsMobileSidebarOpen(true)}
+                onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+                onToggleAttachments={() =>
+                  setIsAttachmentDrawerOpen((prev) => !prev)
+                }
+                onToggleOutline={() => setIsOutlineOpen((prev) => !prev)}
+                isOutlineOpen={isOutlineOpen}
+                onOpenImportExport={() => setIsImportExportOpen(true)}
+                onOpenProfile={() => setIsProfileOpen(true)}
+                attachmentCount={currentAttachments.length}
+                syncState={syncState}
+                wordCount={wordCount}
+                charCount={charCount}
+                readingTimeMinutes={readingTimeMinutes}
+              />
+
+              {/* Note Status Banner for Archive & Trash */}
+              {isNoteTrashed && (
+                <div className="flex items-center justify-between bg-red-950/70 border-b border-red-800/60 px-4 py-2 font-mono text-xs text-red-200">
+                  <div className="flex items-center gap-2">
+                    <Trash2 className="h-4 w-4 text-red-400" />
+                    <span>This note is in the Trash. Editing is disabled.</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleRestoreFromTrash(activeNote.id)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-stack-metal hover:bg-stack-steel/30 text-stack-bone transition-colors"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                      <span>Restore</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePermanentDelete(activeNote.id)}
+                      className="px-2.5 py-1 rounded bg-red-800 hover:bg-red-700 text-white font-medium transition-colors"
+                    >
+                      Delete Forever
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
+              )}
+
+              {isNoteArchived && (
+                <div className="flex items-center justify-between bg-stack-metal/40 border-b border-stack-metal/70 px-4 py-2 font-mono text-xs text-stack-silver">
+                  <div className="flex items-center gap-2">
+                    <Archive className="h-4 w-4 text-stack-steel" />
+                    <span>This note is archived.</span>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => handleRestoreFromTrash(activeNote.id)}
+                    onClick={() => handleUnarchiveNote(activeNote.id)}
                     className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-stack-metal hover:bg-stack-steel/30 text-stack-bone transition-colors"
                   >
                     <RotateCcw className="h-3 w-3" />
-                    <span>Restore</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handlePermanentDelete(activeNote.id)}
-                    className="px-2.5 py-1 rounded bg-red-800 hover:bg-red-700 text-white font-medium transition-colors"
-                  >
-                    Delete Forever
+                    <span>Unarchive</span>
                   </button>
                 </div>
-              </div>
-            )}
+              )}
 
-            {isNoteArchived && (
-              <div className="flex items-center justify-between bg-stack-metal/40 border-b border-stack-metal/70 px-4 py-2 font-mono text-xs text-stack-silver">
-                <div className="flex items-center gap-2">
-                  <Archive className="h-4 w-4 text-stack-steel" />
-                  <span>This note is archived.</span>
+              {/* Active Note Tag Editor Bar */}
+              {!isNoteTrashed && (
+                <div className="border-b border-stack-metal/40 bg-stack-surface/60 px-3 py-1 flex items-center justify-between">
+                  <NoteTagEditor
+                    tags={activeNote.tags || []}
+                    allKnownTags={allKnownTags}
+                    onAddTag={(tag) => handleAddTag(activeNote.id, tag)}
+                    onRemoveTag={(tag) => handleRemoveTag(activeNote.id, tag)}
+                    readOnly={isNoteArchived}
+                  />
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleUnarchiveNote(activeNote.id)}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-stack-metal hover:bg-stack-steel/30 text-stack-bone transition-colors"
-                >
-                  <RotateCcw className="h-3 w-3" />
-                  <span>Unarchive</span>
-                </button>
-              </div>
-            )}
+              )}
 
-            {/* Active Note Tag Editor Bar */}
-            {!isNoteTrashed && (
-              <div className="border-b border-stack-metal/40 bg-stack-surface/60 px-3 py-1 flex items-center justify-between">
-                <NoteTagEditor
-                  tags={activeNote.tags || []}
-                  allKnownTags={allKnownTags}
-                  onAddTag={(tag) => handleAddTag(activeNote.id, tag)}
-                  onRemoveTag={(tag) => handleRemoveTag(activeNote.id, tag)}
-                  readOnly={isNoteArchived}
+              {/* Crash recovery notification */}
+              {recoveryDraft && (
+                <RecoveryDraftBanner
+                  isVisible={true}
+                  timeDiffSeconds={recoveryDraft.timeDiffSeconds}
+                  onRestore={handleRestoreDraft}
+                  onDiscard={handleDiscardDraft}
                 />
-              </div>
-            )}
+              )}
 
-            {/* Crash recovery notification */}
-            {recoveryDraft && (
-              <RecoveryDraftBanner
-                isVisible={true}
-                timeDiffSeconds={recoveryDraft.timeDiffSeconds}
-                onRestore={handleRestoreDraft}
-                onDiscard={handleDiscardDraft}
-              />
-            )}
-
-            {/* Content Pane */}
-            <div className="relative flex flex-1 overflow-hidden">
-              <div className="flex flex-1 flex-col overflow-hidden relative">
-                {/* Formatting Toolbar */}
-                {(editorMode === 'write' || editorMode === 'split') &&
-                  !isNoteTrashed && (
-                    <div className="border-b border-stack-metal/40 bg-stack-surface/80 px-2 py-1 flex items-center justify-between overflow-x-auto shrink-0">
-                      <MarkdownToolbar
-                        onExecuteCommand={handleExecuteCommand}
-                        activeFormatting={activeFormatting}
-                        disabled={isNoteArchived}
-                        onOpenImageModal={() => setIsInsertImageModalOpen(true)}
-                      />
-                      <AttachmentStatusIndicator />
-                    </div>
-                  )}
-
-                {/* Write Mode */}
-                {editorMode === 'write' && (
-                  <div className="relative flex-1 h-full overflow-hidden">
-                    <AttachmentDropOverlay isDragging={isDraggingOver} />
-                    <EditorStickyActions
-                      saveState={saveState}
-                      onUndo={() => editorRef.current?.undo()}
-                      onRedo={() => editorRef.current?.redo()}
-                      onSave={handleExplicitSave}
-                      onCopyAll={handleCopyAll}
-                      disabled={isNoteTrashed || isNoteArchived}
-                      className="absolute top-2 right-4 z-20"
-                    />
-                    <Suspense
-                      fallback={
-                        <div className="flex h-full w-full items-center justify-center font-mono text-xs text-stack-steel">
-                          Initializing Editor Engine…
-                        </div>
-                      }
-                    >
-                      <CodeMirrorEditor
-                        ref={editorRef}
-                        value={activeNote.content || ''}
-                        onChange={(content) => handleUpdateNote({ content })}
-                        onSave={handleExplicitSave}
-                        onActiveFormattingChange={setActiveFormatting}
-                        onSlashContextChange={setSlashContext}
-                        onFilesPaste={handleProcessFiles}
-                        onFilesDrop={handleProcessFiles}
-                        onDragStateChange={setIsDraggingOver}
-                      />
-                    </Suspense>
-                    {slashContext && !isNoteTrashed && !isNoteArchived && (
-                      <SlashCommandMenu
-                        context={slashContext}
-                        onSelectCommand={handleSelectSlashCommand}
-                        onClose={() => setSlashContext(null)}
-                      />
+              {/* Content Pane */}
+              <div className="relative flex flex-1 overflow-hidden">
+                <div className="flex flex-1 flex-col overflow-hidden relative">
+                  {/* Formatting Toolbar */}
+                  {(editorMode === 'write' || editorMode === 'split') &&
+                    !isNoteTrashed && (
+                      <div className="border-b border-stack-metal/40 bg-stack-surface/80 px-2 py-1 flex items-center justify-between overflow-x-auto shrink-0">
+                        <MarkdownToolbar
+                          onExecuteCommand={handleExecuteCommand}
+                          activeFormatting={activeFormatting}
+                          disabled={isNoteArchived}
+                          onOpenImageModal={() =>
+                            setIsInsertImageModalOpen(true)
+                          }
+                        />
+                        <AttachmentStatusIndicator />
+                      </div>
                     )}
-                  </div>
-                )}
 
-                {/* Split Mode */}
-                {editorMode === 'split' && (
-                  <div className="flex-1 flex flex-col md:flex-row h-full overflow-hidden">
-                    <div className="relative flex-1 h-1/2 md:h-full border-b md:border-b-0 md:border-r border-stack-metal/70 overflow-hidden flex flex-col">
+                  {/* Write Mode */}
+                  {editorMode === 'write' && (
+                    <div className="relative flex-1 h-full overflow-hidden">
                       <AttachmentDropOverlay isDragging={isDraggingOver} />
                       <EditorStickyActions
                         saveState={saveState}
@@ -1237,118 +1199,164 @@ export function WorkspaceView({
                         />
                       )}
                     </div>
-                    <div className="flex-1 h-1/2 md:h-full overflow-y-auto bg-stack-surface/30">
+                  )}
+
+                  {/* Split Mode */}
+                  {editorMode === 'split' && (
+                    <div className="flex-1 flex flex-col md:flex-row h-full overflow-hidden">
+                      <div className="relative flex-1 h-1/2 md:h-full border-b md:border-b-0 md:border-r border-stack-metal/70 overflow-hidden flex flex-col">
+                        <AttachmentDropOverlay isDragging={isDraggingOver} />
+                        <EditorStickyActions
+                          saveState={saveState}
+                          onUndo={() => editorRef.current?.undo()}
+                          onRedo={() => editorRef.current?.redo()}
+                          onSave={handleExplicitSave}
+                          onCopyAll={handleCopyAll}
+                          disabled={isNoteTrashed || isNoteArchived}
+                          className="absolute top-2 right-4 z-20"
+                        />
+                        <Suspense
+                          fallback={
+                            <div className="flex h-full w-full items-center justify-center font-mono text-xs text-stack-steel">
+                              Initializing Editor Engine…
+                            </div>
+                          }
+                        >
+                          <CodeMirrorEditor
+                            ref={editorRef}
+                            value={activeNote.content || ''}
+                            onChange={(content) =>
+                              handleUpdateNote({ content })
+                            }
+                            onSave={handleExplicitSave}
+                            onActiveFormattingChange={setActiveFormatting}
+                            onSlashContextChange={setSlashContext}
+                            onFilesPaste={handleProcessFiles}
+                            onFilesDrop={handleProcessFiles}
+                            onDragStateChange={setIsDraggingOver}
+                          />
+                        </Suspense>
+                        {slashContext && !isNoteTrashed && !isNoteArchived && (
+                          <SlashCommandMenu
+                            context={slashContext}
+                            onSelectCommand={handleSelectSlashCommand}
+                            onClose={() => setSlashContext(null)}
+                          />
+                        )}
+                      </div>
+                      <div className="flex-1 h-1/2 md:h-full overflow-y-auto bg-stack-surface/30">
+                        <MarkdownPreview
+                          content={activeNote.content || ''}
+                          noteId={activeNote.id}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Read Mode */}
+                  {editorMode === 'read' && (
+                    <div className="flex-1 h-full overflow-y-auto bg-stack-surface/20">
                       <MarkdownPreview
                         content={activeNote.content || ''}
                         noteId={activeNote.id}
                       />
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Read Mode */}
-                {editorMode === 'read' && (
-                  <div className="flex-1 h-full overflow-y-auto bg-stack-surface/20">
-                    <MarkdownPreview
-                      content={activeNote.content || ''}
-                      noteId={activeNote.id}
-                    />
-                  </div>
-                )}
+                  {/* Attachments Drawer */}
+                  <AttachmentDrawer
+                    isOpen={isAttachmentDrawerOpen}
+                    onClose={() => setIsAttachmentDrawerOpen(false)}
+                    attachments={currentAttachments}
+                    onUploadClick={() => fileInputRef.current?.click()}
+                  />
+                </div>
 
-                {/* Attachments Drawer */}
-                <AttachmentDrawer
-                  isOpen={isAttachmentDrawerOpen}
-                  onClose={() => setIsAttachmentDrawerOpen(false)}
-                  attachments={currentAttachments}
-                  onUploadClick={() => fileInputRef.current?.click()}
+                {/* Document Outline sidebar */}
+                <DocumentOutline
+                  content={activeNote.content || ''}
+                  isOpen={isOutlineOpen}
+                  onClose={() => setIsOutlineOpen(false)}
                 />
               </div>
 
-              {/* Document Outline sidebar */}
-              <DocumentOutline
-                content={activeNote.content || ''}
-                isOpen={isOutlineOpen}
-                onClose={() => setIsOutlineOpen(false)}
+              {/* Footer Status Bar */}
+              <footer className="flex h-6 w-full items-center justify-between border-t border-stack-metal/60 bg-stack-surface px-4 font-mono text-[10px] text-stack-steel">
+                <div className="flex items-center gap-4">
+                  <span>{wordCount} words</span>
+                  <span>{charCount} characters</span>
+                  <span>~{readingTimeMinutes} min read</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-stack-silver">
+                    {activeNote.tags?.map((t) => `#${t}`).join(' ') ||
+                      'no tags'}
+                  </span>
+                  <span>·</span>
+                  <span>
+                    Updated{' '}
+                    {new Date(activeNote.updatedAt).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </div>
+              </footer>
+            </>
+          ) : (
+            /* Empty Workspace State */
+            <div className="flex flex-1 items-center justify-center bg-stack-surface/10">
+              <WorkspaceEmptyState
+                preferredName={`@${user.username}`}
+                onCreateNote={() => handleCreateNote()}
+                onImportMarkdown={() => setIsImportExportOpen(true)}
+                onStartTour={() => setIsTourOpen(true)}
               />
             </div>
+          )}
+        </div>
 
-            {/* Footer Status Bar */}
-            <footer className="flex h-6 w-full items-center justify-between border-t border-stack-metal/60 bg-stack-surface px-4 font-mono text-[10px] text-stack-steel">
-              <div className="flex items-center gap-4">
-                <span>{wordCount} words</span>
-                <span>{charCount} characters</span>
-                <span>~{readingTimeMinutes} min read</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-stack-silver">
-                  {activeNote.tags?.map((t) => `#${t}`).join(' ') || 'no tags'}
-                </span>
-                <span>·</span>
-                <span>
-                  Updated{' '}
-                  {new Date(activeNote.updatedAt).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </span>
-              </div>
-            </footer>
-          </>
-        ) : (
-          /* Empty Workspace State */
-          <div className="flex flex-1 items-center justify-center bg-stack-surface/10">
-            <WorkspaceEmptyState
-              preferredName={`@${user.username}`}
-              onCreateNote={() => handleCreateNote()}
-              onImportMarkdown={() => setIsImportExportOpen(true)}
-              onStartTour={() => setIsTourOpen(true)}
-            />
-          </div>
-        )}
-      </div>
+        {/* Modals */}
+        <CoachMarkTour
+          isOpen={isTourOpen}
+          userSub={user.sub}
+          onClose={() => setIsTourOpen(false)}
+        />
 
-      {/* Modals */}
-      <CoachMarkTour
-        isOpen={isTourOpen}
-        userSub={user.sub}
-        onClose={() => setIsTourOpen(false)}
-      />
+        <CommandPaletteModal
+          isOpen={isCommandPaletteOpen}
+          onClose={() => setIsCommandPaletteOpen(false)}
+          notes={notes}
+          onSelectNote={handleSelectNote}
+          onCreateNote={handleCreateNote}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+        />
 
-      <CommandPaletteModal
-        isOpen={isCommandPaletteOpen}
-        onClose={() => setIsCommandPaletteOpen(false)}
-        notes={notes}
-        onSelectNote={handleSelectNote}
-        onCreateNote={handleCreateNote}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-      />
+        <SettingsModal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          noteCount={notes.length}
+          user={user}
+        />
 
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        noteCount={notes.length}
-        user={user}
-      />
+        <ProfileModal
+          isOpen={isProfileOpen}
+          onClose={() => setIsProfileOpen(false)}
+        />
 
-      <ProfileModal
-        isOpen={isProfileOpen}
-        onClose={() => setIsProfileOpen(false)}
-      />
+        <ImportExportModal
+          isOpen={isImportExportOpen}
+          onClose={() => setIsImportExportOpen(false)}
+          activeNote={activeNote ?? null}
+          allNotes={notes}
+          allAttachments={Object.values(attachments).flat()}
+          onImportNotes={handleImportNotes}
+        />
 
-      <ImportExportModal
-        isOpen={isImportExportOpen}
-        onClose={() => setIsImportExportOpen(false)}
-        activeNote={activeNote ?? null}
-        allNotes={notes}
-        allAttachments={Object.values(attachments).flat()}
-        onImportNotes={handleImportNotes}
-      />
-
-      <InstallInstructionsDialog
-        isOpen={isInstallDialogOpen}
-        onClose={() => setIsInstallDialogOpen(false)}
-      />
+        <InstallInstructionsDialog
+          isOpen={isInstallDialogOpen}
+          onClose={() => setIsInstallDialogOpen(false)}
+        />
 
         <InsertImageModal
           isOpen={isInsertImageModalOpen}

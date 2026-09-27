@@ -17,7 +17,13 @@ export function PublicFooter() {
             parikesitad-pm
           </a>
         </div>
-        <div className="flex items-center gap-6 text-stack-silver justify-center">
+        <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-stack-silver justify-center">
+          <Link to="/demo" className="hover:text-stack-bone">
+            Demo
+          </Link>
+          <Link to="/how-to-use" className="hover:text-stack-bone">
+            How to Use
+          </Link>
           <Link to="/docs" className="hover:text-stack-bone">
             Docs
           </Link>
@@ -28,7 +34,7 @@ export function PublicFooter() {
             Changelog
           </Link>
           <Link to="/modula-project" className="hover:text-stack-bone">
-            More from Modula
+            Modula
           </Link>
           <Link to="/app" className="text-stack-red-hover hover:underline">
             Launch App

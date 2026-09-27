@@ -78,7 +78,9 @@ describe('Canonical Username Contract & Demo Workspace Isolation', () => {
       expect(demoFolders.map((f) => f.name)).toContain('Getting Started');
 
       // 2. Real user partition remains completely empty
-      const realUserNotes = await userWorkspaceStorage.getNotes('auth0|operator_alice');
+      const realUserNotes = await userWorkspaceStorage.getNotes(
+        'auth0|operator_alice'
+      );
       expect(realUserNotes.length).toBe(0);
     });
 
@@ -123,7 +125,8 @@ describe('Canonical Username Contract & Demo Workspace Isolation', () => {
         },
       ]);
 
-      const demoNotesBeforeReset = await userWorkspaceStorage.getNotes(DEMO_SUB);
+      const demoNotesBeforeReset =
+        await userWorkspaceStorage.getNotes(DEMO_SUB);
       expect(demoNotesBeforeReset.length).toBe(INITIAL_DEMO_NOTES.length + 1);
 
       // 3. User clicks Reset Demo
@@ -132,7 +135,9 @@ describe('Canonical Username Contract & Demo Workspace Isolation', () => {
       // 4. Demo is restored to initial sample notes only
       const demoNotesAfterReset = await userWorkspaceStorage.getNotes(DEMO_SUB);
       expect(demoNotesAfterReset.length).toBe(INITIAL_DEMO_NOTES.length);
-      expect(demoNotesAfterReset.some((n) => n.id === 'demo-user-scratch')).toBe(false);
+      expect(
+        demoNotesAfterReset.some((n) => n.id === 'demo-user-scratch')
+      ).toBe(false);
 
       // 5. INVARIANT: Authenticated user notes are completely untouched!
       const aliceNotes = await userWorkspaceStorage.getNotes(AUTH_SUB);

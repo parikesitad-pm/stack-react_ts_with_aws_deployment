@@ -14,6 +14,7 @@
     "build": "react-router build",
     "typecheck": "react-router typegen && tsc --noEmit",
     "test": "vitest run",
+    "how-to-use": "node scripts/how-to-use.js",
     "devtools": "react-devtools"
   },
   "devDependencies": {

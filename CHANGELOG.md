@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Dedicated user-facing operational guide at `/how-to-use` (`https://stack-md.online/how-to-use`) detailing local-first persistence, CodeMirror 6 formatting, Slash commands, tri-mode viewports, folder/tag hierarchy, media attachments, and keyboard cheatsheet.
+- Interactive CLI helper script `pnpm run how-to-use` (`scripts/how-to-use.js`) outputting quickstart commands and terminal guides.
+- Continuous Evolution and Release Log showcase section on the landing page highlighting milestones from v0.9.0 to v0.7.0.
 - Interactive public demo workspace at `/demo` (`https://stack-md.online/demo`) operating in complete isolation under `stack_demo_workspace` (IndexedDB) and `stack_demo_layout` (localStorage).
 - Seeded demo workspace with sample folders ("Getting Started", "Projects", "Ideas"), notes ("Welcome to STACK", "Markdown Playground", "Local-First Notes", "Keyboard Shortcuts"), tags (`#markdown`, `#local-first`, `#demo`), and bundled branding image asset.
 - Persistent demo mode top bar with one-click "Reset Demo" action, "Create Account", and "Sign In" navigation.
@@ -16,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Updated `/changelog` route (`app/routes/changelog.tsx`) to display the full semantic release registry from v0.9.0 down to v0.1.0.
+- Updated landing hero badge to `STACK v0.9.0 · A Modula Project`.
+- Added "How to Use" navigation links across `PublicNavbar`, `PublicFooter`, and landing page hero CTA.
 - Aligned canonical username contract across frontend schemas, onboarding UI copy, and profile modal to `^[a-z0-9._-]{3,32}$` (3–32 characters, lowercase letters, numbers, dot, underscore, and hyphen, no stored leading `@`).
 
 ### Fixed

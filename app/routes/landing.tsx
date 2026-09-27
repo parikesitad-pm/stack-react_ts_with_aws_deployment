@@ -14,6 +14,7 @@ import { PublicNavbar } from '~/components/molecules/PublicNavbar';
 import { PublicFooter } from '~/components/molecules/PublicFooter';
 import { Button } from '~/components/atoms/Button';
 import { Badge } from '~/components/atoms/Badge';
+import { Kbd } from '~/components/atoms/Kbd';
 import { InstallStackButton } from '~/features/pwa/components/InstallStackButton';
 import { HeroTerminalTagline } from '~/features/landing/components/HeroTerminalTagline';
 import { useAuthSession } from '~/features/auth/hooks/useAuthSession';
@@ -157,6 +158,11 @@ export default function LandingPage() {
                   </Button>
                 </Link>
               )}
+              <Link to="/how-to-use">
+                <Button variant="outline" size="lg">
+                  <span>How to Use</span>
+                </Button>
+              </Link>
               <Link to="/docs">
                 <Button variant="outline" size="lg">
                   <span>Explore Docs</span>
@@ -352,6 +358,86 @@ export default function LandingPage() {
 
               <div className="pt-2 flex justify-center">
                 <InstallStackButton size="lg" variant="primary" />
+              </div>
+            </div>
+
+            {/* Changelog & Evolution */}
+            <div className="mt-16 pt-12 border-t border-stack-metal/70 space-y-8">
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                <div>
+                  <Badge variant="accent">RELEASE LOG</Badge>
+                  <h3 className="mt-2 font-mono text-2xl sm:text-3xl font-bold tracking-tight text-stack-bone">
+                    Continuous Evolution
+                  </h3>
+                  <p className="mt-2 font-mono text-xs sm:text-sm text-stack-steel leading-relaxed">
+                    Transparent, verifiable engineering milestones based on semantic versioning.
+                  </p>
+                </div>
+                <Link to="/changelog" className="shrink-0">
+                  <Button variant="outline" size="sm">
+                    <span>View Full Changelog</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Button>
+                </Link>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 font-mono">
+                <div className="rounded border border-stack-metal bg-stack-surface p-5 space-y-3">
+                  <div className="flex items-center justify-between border-b border-stack-metal/50 pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-stack-bone text-sm">v0.9.0</span>
+                      <Badge variant="active">Latest</Badge>
+                    </div>
+                    <span className="text-[11px] text-stack-steel">2026-09-27</span>
+                  </div>
+                  <h4 className="text-xs font-bold text-stack-bone">
+                    Images, Attachments & Offline Resilience
+                  </h4>
+                  <ul className="text-[11px] text-stack-silver space-y-1.5 list-disc ml-4 leading-relaxed">
+                    <li>Local-first IndexedDB binary repository partitioned per user.</li>
+                    <li>Clipboard image paste (<Kbd>Ctrl+V</Kbd>) & drag-and-drop.</li>
+                    <li>Client-side WebP optimization with max 2560px edge.</li>
+                    <li>Resumable background upload queue with cloud fallback.</li>
+                  </ul>
+                </div>
+
+                <div className="rounded border border-stack-metal bg-stack-surface p-5 space-y-3">
+                  <div className="flex items-center justify-between border-b border-stack-metal/50 pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-stack-bone text-sm">v0.8.0</span>
+                      <Badge variant="default">Sprint 4</Badge>
+                    </div>
+                    <span className="text-[11px] text-stack-steel">2026-09-27</span>
+                  </div>
+                  <h4 className="text-xs font-bold text-stack-bone">
+                    CodeMirror 6 Engine & Slash Commands
+                  </h4>
+                  <ul className="text-[11px] text-stack-silver space-y-1.5 list-disc ml-4 leading-relaxed">
+                    <li>Raw Markdown is the sole authoritative document source of truth.</li>
+                    <li>Keyboard-first slash commands (<code className="text-stack-bone">/h1</code>, <code className="text-stack-bone">/table</code>, <code className="text-stack-bone">/code</code>).</li>
+                    <li>Compact formatting toolbar with active syntax detection.</li>
+                    <li>500ms debounced autosave with revision safety.</li>
+                  </ul>
+                </div>
+
+                <div className="rounded border border-stack-metal bg-stack-surface p-5 space-y-3">
+                  <div className="flex items-center justify-between border-b border-stack-metal/50 pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-stack-bone text-sm">v0.7.0</span>
+                      <Badge variant="default">Sprint 3</Badge>
+                    </div>
+                    <span className="text-[11px] text-stack-steel">2026-09-27</span>
+                  </div>
+                  <h4 className="text-xs font-bold text-stack-bone">
+                    Nested Folders, Tags & Reordering
+                  </h4>
+                  <ul className="text-[11px] text-stack-silver space-y-1.5 list-disc ml-4 leading-relaxed">
+                    <li>Nested folders with cycle prevention and safe reparenting deletion.</li>
+                    <li>Drag-and-drop before/after sibling ordering.</li>
+                    <li>Active note inline tagging with sidebar frequency counts.</li>
+                    <li>Strict state precedence: Trash &gt; Archive &gt; Active.</li>
+                  </ul>
+                </div>
               </div>
             </div>
 

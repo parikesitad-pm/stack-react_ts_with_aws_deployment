@@ -19,10 +19,11 @@ export function PublicNavbar() {
   const navLinks = [
     { href: '/', label: 'Overview' },
     { href: '/demo', label: 'Demo' },
-    { href: '/docs', label: 'Documentation' },
-    { href: '/help', label: 'Help & FAQ' },
+    { href: '/how-to-use', label: 'How to Use' },
+    { href: '/docs', label: 'Docs' },
+    { href: '/help', label: 'Help' },
     { href: '/changelog', label: 'Changelog' },
-    { href: '/modula-project', label: 'Modula Projects' },
+    { href: '/modula-project', label: 'Modula' },
   ];
 
   return (

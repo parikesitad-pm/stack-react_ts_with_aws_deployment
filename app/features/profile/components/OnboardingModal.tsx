@@ -192,7 +192,8 @@ export function OnboardingModal({
               )}
 
               <p className="text-[10px] text-stack-steel/80">
-                3–32 characters. Use lowercase letters, numbers, dot, underscore, or hyphen.
+                3–32 characters. Use lowercase letters, numbers, dot,
+                underscore, or hyphen.
               </p>
             </div>
 
