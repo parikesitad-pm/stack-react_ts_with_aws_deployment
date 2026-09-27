@@ -1,9 +1,4 @@
-import {
-  useEffect,
-  useRef,
-  useImperativeHandle,
-  forwardRef,
-} from 'react';
+import { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { EditorState } from '@codemirror/state';
 import {
   EditorView,
@@ -33,7 +28,12 @@ export interface CodeMirrorEditorHandle {
   redo: () => void;
   getRawMarkdown: () => string;
   focus: () => void;
-  replaceSlashQuery: (from: number, to: number, command: MarkdownCommand) => void;
+  replaceSlashQuery: (
+    from: number,
+    to: number,
+    command: MarkdownCommand
+  ) => void;
+  insertText: (text: string) => void;
 }
 
 export interface CodeMirrorEditorProps {
@@ -42,6 +42,9 @@ export interface CodeMirrorEditorProps {
   onSave?: () => void;
   onActiveFormattingChange?: (formatting: ActiveFormattingState) => void;
   onSlashContextChange?: (context: SlashContext | null) => void;
+  onFilesPaste?: (files: File[]) => void;
+  onFilesDrop?: (files: File[]) => void;
+  onDragStateChange?: (isDragging: boolean) => void;
   className?: string;
 }
 
@@ -94,6 +97,9 @@ export const CodeMirrorEditor = forwardRef<
     onSave,
     onActiveFormattingChange,
     onSlashContextChange,
+    onFilesPaste,
+    onFilesDrop,
+    onDragStateChange,
     className = '',
   },
   ref
@@ -113,6 +119,15 @@ export const CodeMirrorEditor = forwardRef<
 
   const onSlashContextChangeRef = useRef(onSlashContextChange);
   onSlashContextChangeRef.current = onSlashContextChange;
+
+  const onFilesPasteRef = useRef(onFilesPaste);
+  onFilesPasteRef.current = onFilesPaste;
+
+  const onFilesDropRef = useRef(onFilesDrop);
+  onFilesDropRef.current = onFilesDrop;
+
+  const onDragStateChangeRef = useRef(onDragStateChange);
+  onDragStateChangeRef.current = onDragStateChange;
 
   useImperativeHandle(
     ref,
@@ -153,6 +168,16 @@ export const CodeMirrorEditor = forwardRef<
 
         // Execute the markdown command at the cleared position
         markdownCommandService.execute(view, command);
+      },
+      insertText(text: string) {
+        const view = viewRef.current;
+        if (!view) return;
+        const { from, to } = view.state.selection.main;
+        view.dispatch({
+          changes: { from, to, insert: text },
+          selection: { anchor: from + text.length },
+        });
+        view.focus();
       },
     }),
     [value]
@@ -236,13 +261,55 @@ export const CodeMirrorEditor = forwardRef<
         highlightActiveLineGutter(),
         highlightActiveLine(),
         history(),
-        keymap.of([
-          ...editorKeymaps,
-          ...defaultKeymap,
-          ...historyKeymap,
-        ]),
+        keymap.of([...editorKeymaps, ...defaultKeymap, ...historyKeymap]),
         markdown(),
         industrialTheme,
+        EditorView.domEventHandlers({
+          paste(event) {
+            const items = event.clipboardData?.items;
+            const files: File[] = [];
+            if (items) {
+              for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                if (item && item.kind === 'file' && item.type.startsWith('image/')) {
+                  const file = item.getAsFile();
+                  if (file) files.push(file);
+                }
+              }
+            }
+            if (files.length > 0) {
+              event.preventDefault();
+              onFilesPasteRef.current?.(files);
+              return true;
+            }
+            return false;
+          },
+          dragover(event) {
+            if (event.dataTransfer?.types?.includes('Files')) {
+              event.preventDefault();
+              onDragStateChangeRef.current?.(true);
+              return true;
+            }
+            return false;
+          },
+          dragleave() {
+            onDragStateChangeRef.current?.(false);
+            return false;
+          },
+          drop(event) {
+            if (
+              event.dataTransfer?.files &&
+              event.dataTransfer.files.length > 0
+            ) {
+              event.preventDefault();
+              const files = Array.from(event.dataTransfer.files);
+              onDragStateChangeRef.current?.(false);
+              onFilesDropRef.current?.(files);
+              return true;
+            }
+            return false;
+          },
+        }),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             onChangeRef.current(update.state.doc.toString());

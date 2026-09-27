@@ -1,6 +1,7 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { MarkdownImage } from '~/features/attachments/components/MarkdownImage';
+import { AttachmentLink } from '~/features/attachments/components/AttachmentLink';
 
 export interface MarkdownRendererProps {
   content: string;
@@ -154,15 +155,9 @@ export function MarkdownRenderer({
             </td>
           ),
           a: ({ children, href, ...props }) => (
-            <a
-              href={href}
-              target={href?.startsWith('http') ? '_blank' : undefined}
-              rel={href?.startsWith('http') ? 'noopener noreferrer' : undefined}
-              className="text-stack-bone underline decoration-stack-steel hover:decoration-stack-bone transition-colors"
-              {...props}
-            >
+            <AttachmentLink href={href} {...props}>
               {children}
-            </a>
+            </AttachmentLink>
           ),
           hr: () => <hr className="my-6 border-stack-metal/60" />,
         }}

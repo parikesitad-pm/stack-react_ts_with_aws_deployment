@@ -41,6 +41,11 @@ import { MarkdownToolbar } from '~/features/editor/components/MarkdownToolbar';
 import { EditorStickyActions } from '~/features/editor/components/EditorStickyActions';
 import { SlashCommandMenu } from '~/features/editor/components/SlashCommandMenu';
 import { editorSaveService } from '~/features/editor/services/editorSave.service';
+import { objectUrlCache } from '~/features/attachments/services/objectUrlCache.service';
+import { attachmentUploadService } from '~/features/attachments/services/attachmentUpload.service';
+import { AttachmentDropOverlay } from '~/features/attachments/components/AttachmentDropOverlay';
+import { InsertImageModal } from '~/features/attachments/components/InsertImageModal';
+import { AttachmentStatusIndicator } from '~/features/attachments/components/AttachmentStatusIndicator';
 import type {
   ActiveFormattingState,
   MarkdownCommand,
@@ -109,12 +114,37 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [saveState, setSaveState] = useState<SaveState>({ status: 'idle' });
-  const [activeFormatting, setActiveFormatting] = useState<ActiveFormattingState | undefined>(undefined);
+  const [activeFormatting, setActiveFormatting] = useState<
+    ActiveFormattingState | undefined
+  >(undefined);
   const [slashContext, setSlashContext] = useState<SlashContext | null>(null);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [isInsertImageModalOpen, setIsInsertImageModalOpen] = useState(false);
 
   useEffect(() => {
     notesRef.current = notes;
   }, [notes]);
+
+  // Sync active user sub and clean up caches on user change or unmount
+  useEffect(() => {
+    attachmentRepository.setActiveSub(user.sub);
+    return () => {
+      objectUrlCache.clearUser(user.sub);
+      attachmentUploadService.clearUser(user.sub);
+      attachmentRepository.setActiveSub(null);
+    };
+  }, [user.sub]);
+
+  // Load note-scoped attachments on active note change
+  useEffect(() => {
+    if (!activeNoteId || !user.sub) return;
+    attachmentRepository.findByNoteId(activeNoteId, user.sub).then((stored) => {
+      setAttachments((prev) => ({
+        ...prev,
+        [activeNoteId]: stored,
+      }));
+    }).catch(console.error);
+  }, [activeNoteId, user.sub]);
 
   // Subscribe to editor save state changes
   useEffect(() => {
@@ -131,7 +161,10 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
           setSyncState('syncing');
         } else if (state.status === 'saved-local') {
           setSyncState('saved_locally');
-        } else if (state.status === 'offline-local' || state.status === 'local-error') {
+        } else if (
+          state.status === 'offline-local' ||
+          state.status === 'local-error'
+        ) {
           setSyncState('offline');
         }
       }
@@ -212,12 +245,16 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
         e.preventDefault();
         setLayoutMode((prev) => {
           const next = prev === 'zen' ? 'expanded' : 'zen';
-          userWorkspaceStorage.saveLayoutSettings(user.sub, { sidebarMode: next });
+          userWorkspaceStorage.saveLayoutSettings(user.sub, {
+            sidebarMode: next,
+          });
           return next;
         });
       } else if (e.key === 'Escape' && layoutMode === 'zen') {
         setLayoutMode('expanded');
-        userWorkspaceStorage.saveLayoutSettings(user.sub, { sidebarMode: 'expanded' });
+        userWorkspaceStorage.saveLayoutSettings(user.sub, {
+          sidebarMode: 'expanded',
+        });
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -235,8 +272,12 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
     [notes, activeNoteId]
   );
 
-  const isNoteTrashed = activeNote ? noteOrganizationService.isNoteTrashed(activeNote) : false;
-  const isNoteArchived = activeNote ? noteOrganizationService.isNoteArchived(activeNote) : false;
+  const isNoteTrashed = activeNote
+    ? noteOrganizationService.isNoteTrashed(activeNote)
+    : false;
+  const isNoteArchived = activeNote
+    ? noteOrganizationService.isNoteArchived(activeNote)
+    : false;
 
   // Extract all known active tags for auto-completion
   const allKnownTags = useMemo(
@@ -385,7 +426,9 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
       contentToPersist,
       async (id, content) => {
         const toSave = notesRef.current.map((n) =>
-          n.id === id ? { ...n, content, updatedAt: new Date().toISOString() } : n
+          n.id === id
+            ? { ...n, content, updatedAt: new Date().toISOString() }
+            : n
         );
         await userWorkspaceStorage.saveNotes(user.sub, toSave);
         if (typeof window !== 'undefined') {
@@ -403,7 +446,8 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
 
   // Copy All Raw Markdown to clipboard with honest success report
   const handleCopyAll = async (): Promise<boolean> => {
-    const raw = editorRef.current?.getRawMarkdown() ?? activeNote?.content ?? '';
+    const raw =
+      editorRef.current?.getRawMarkdown() ?? activeNote?.content ?? '';
     try {
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(raw);
@@ -422,7 +466,10 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
   };
 
   // Execute Slash Command
-  const handleSelectSlashCommand = (cmd: MarkdownCommand, ctx: SlashContext) => {
+  const handleSelectSlashCommand = (
+    cmd: MarkdownCommand,
+    ctx: SlashContext
+  ) => {
     editorRef.current?.replaceSlashQuery(ctx.from, ctx.to, cmd);
     setSlashContext(null);
   };
@@ -437,7 +484,8 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
     const newNote: Note = {
       id: `note_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
       title: 'Untitled Note',
-      content: '# Untitled Note\n\nStart writing Markdown notes without the noise…',
+      content:
+        '# Untitled Note\n\nStart writing Markdown notes without the noise…',
       tags: [],
       folderId: targetFolderId || null,
       order: (notes.length + 1) * 100,
@@ -468,7 +516,11 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
 
   const handleMoveNoteToFolder = (noteId: string, folderId: string | null) => {
     try {
-      const nextNotes = workspaceMoveService.moveNoteToFolder(noteId, folderId, notes);
+      const nextNotes = workspaceMoveService.moveNoteToFolder(
+        noteId,
+        folderId,
+        notes
+      );
       applyNotesMutation(nextNotes);
     } catch (err: unknown) {
       alert((err as Error).message || 'Failed to move note');
@@ -493,7 +545,10 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
     }
   };
 
-  const handleMoveFolder = (folderId: string, targetParentId: string | null) => {
+  const handleMoveFolder = (
+    folderId: string,
+    targetParentId: string | null
+  ) => {
     try {
       const nextFolders = workspaceMoveService.moveFolder(
         folderId,
@@ -525,7 +580,11 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
   };
 
   const handleCreateFolder = (name: string, parentId: string | null) => {
-    const validation = folderTreeService.validateFolderName(name, parentId, folders);
+    const validation = folderTreeService.validateFolderName(
+      name,
+      parentId,
+      folders
+    );
     if (!validation.valid) {
       alert(validation.error || 'Invalid folder name');
       return;
@@ -586,7 +645,10 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
   // Lifecycle transitions: Archive, Trash, Restore, Delete Forever
   const handleArchiveNote = async (noteId: string) => {
     await editorSaveService.flush(noteId);
-    const nextNotes = noteOrganizationService.archiveNote(noteId, notesRef.current);
+    const nextNotes = noteOrganizationService.archiveNote(
+      noteId,
+      notesRef.current
+    );
     applyNotesMutation(nextNotes);
     if (activeNoteId === noteId && activeFilter !== 'archive') {
       const remaining = noteOrganizationService.getActiveNotes(nextNotes);
@@ -595,13 +657,19 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
   };
 
   const handleUnarchiveNote = (noteId: string) => {
-    const nextNotes = noteOrganizationService.unarchiveNote(noteId, notesRef.current);
+    const nextNotes = noteOrganizationService.unarchiveNote(
+      noteId,
+      notesRef.current
+    );
     applyNotesMutation(nextNotes);
   };
 
   const handleMoveToTrash = async (noteId: string) => {
     await editorSaveService.flush(noteId);
-    const nextNotes = noteOrganizationService.moveToTrash(noteId, notesRef.current);
+    const nextNotes = noteOrganizationService.moveToTrash(
+      noteId,
+      notesRef.current
+    );
     applyNotesMutation(nextNotes);
     if (activeNoteId === noteId && activeFilter !== 'trash') {
       const remaining = noteOrganizationService.getActiveNotes(nextNotes);
@@ -610,13 +678,24 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
   };
 
   const handleRestoreFromTrash = (noteId: string) => {
-    const nextNotes = noteOrganizationService.restoreFromTrash(noteId, notesRef.current);
+    const nextNotes = noteOrganizationService.restoreFromTrash(
+      noteId,
+      notesRef.current
+    );
     applyNotesMutation(nextNotes);
   };
 
-  const handlePermanentDelete = (noteId: string) => {
+  const handlePermanentDelete = async (noteId: string) => {
     editorSaveService.cancel(noteId);
-    const nextNotes = noteOrganizationService.permanentlyDeleteNote(noteId, notesRef.current);
+    try {
+      await attachmentRepository.deleteAttachmentsByNoteId(noteId, user.sub);
+    } catch (err) {
+      console.error('Failed to clean up attachments on note deletion:', err);
+    }
+    const nextNotes = noteOrganizationService.permanentlyDeleteNote(
+      noteId,
+      notesRef.current
+    );
     applyNotesMutation(nextNotes);
     if (activeNoteId === noteId) {
       const remaining =
@@ -630,12 +709,20 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
     }
   };
 
-  const handleEmptyTrash = () => {
+  const handleEmptyTrash = async () => {
     if (
       confirm(
         'Permanently delete all notes in the trash? This action cannot be undone.'
       )
     ) {
+      const trashedNotes = notes.filter((n) => n.deletedAt != null);
+      for (const n of trashedNotes) {
+        try {
+          await attachmentRepository.deleteAttachmentsByNoteId(n.id, user.sub);
+        } catch (err) {
+          console.error(`Failed to clean up attachments for note ${n.id}:`, err);
+        }
+      }
       const nextNotes = noteOrganizationService.emptyTrash(notes);
       applyNotesMutation(nextNotes);
       if (activeNote?.deletedAt != null) {
@@ -672,30 +759,68 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
     setActiveNoteId(imported[0]?.id || '');
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !activeNote || isNoteTrashed) return;
+  // Attachment processing pipeline (paste, drag & drop, file picker)
+  const handleProcessFiles = async (files: File[]) => {
+    if (!files || files.length === 0 || !activeNote || isNoteTrashed) return;
 
     try {
       setSyncState('syncing');
-      const { attachment, markdownSyntax } =
-        await attachmentService.processFile(file, activeNote.id, user.sub);
-      setAttachments((prev) => ({
-        ...prev,
-        [activeNote.id]: [...(prev[activeNote.id] || []), attachment],
-      }));
+      const { attachments: newAttachments, markdownSyntax, errors } =
+        await attachmentService.processMultipleFiles(
+          files,
+          activeNote.id,
+          user.sub
+        );
 
+      if (newAttachments.length > 0) {
+        setAttachments((prev) => ({
+          ...prev,
+          [activeNote.id]: [...(prev[activeNote.id] || []), ...newAttachments],
+        }));
+
+        // CodeMirror authority invariant: insert via CodeMirror transaction if available
+        if (editorRef.current) {
+          editorRef.current.insertText(`\n\n${markdownSyntax}\n`);
+        } else {
+          handleUpdateNote({
+            content: (activeNote.content || '') + `\n\n${markdownSyntax}\n`,
+          });
+        }
+      }
+
+      if (errors.length > 0) {
+        const errorDetails = errors
+          .map((e) => `${e.file.name}: ${e.error}`)
+          .join('\n');
+        alert(`Some attachments could not be processed:\n${errorDetails}`);
+      }
+      setSyncState('saved_locally');
+    } catch (err) {
+      console.error('Failed to attach file(s):', err);
+      setSyncState('saved_locally');
+      alert(err instanceof Error ? err.message : 'Failed to process attachment.');
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
+    handleProcessFiles(Array.from(fileList));
+  };
+
+  const handleInsertExternalUrl = (url: string, altText: string) => {
+    if (!activeNote || isNoteTrashed) return;
+    const label = altText.trim() || 'image';
+    const markdownSyntax = `![${label}](${url.trim()})`;
+
+    if (editorRef.current) {
+      editorRef.current.insertText(`\n\n${markdownSyntax}\n`);
+    } else {
       handleUpdateNote({
         content: (activeNote.content || '') + `\n\n${markdownSyntax}\n`,
       });
-
-      setSyncState('saved_locally');
-    } catch (err) {
-      console.error('Failed to attach file:', err);
-      setSyncState('saved_locally');
-      alert('Failed to process attachment.');
-    } finally {
-      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -708,6 +833,10 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
 
   const handleSignOut = async () => {
     await editorSaveService.flush();
+    objectUrlCache.clearUser(user.sub);
+    attachmentUploadService.clearUser(user.sub);
+    userWorkspaceStorage.closeConnection(user.sub);
+    attachmentRepository.setActiveSub(null);
     onSignOut();
   };
 
@@ -719,7 +848,7 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
         type="file"
         multiple
         className="hidden"
-        onChange={handleFileUpload}
+        onChange={handleFileInputChange}
       />
 
       {/* Desktop Persistent Sidebar */}
@@ -833,7 +962,9 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Zen Mode Exit Button */}
         {layoutMode === 'zen' && (
-          <ZenModeExitButton onExit={() => handleLayoutModeChange('expanded')} />
+          <ZenModeExitButton
+            onExit={() => handleLayoutModeChange('expanded')}
+          />
         )}
 
         {notes.length > 0 && activeNote ? (
@@ -841,7 +972,9 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
             {/* Header Bar */}
             <AppHeader
               title={activeNote.title || 'Untitled'}
-              onTitleChange={(newTitle) => handleUpdateNote({ title: newTitle })}
+              onTitleChange={(newTitle) =>
+                handleUpdateNote({ title: newTitle })
+              }
               tags={activeNote.tags || []}
               isPinned={activeNote.isPinned || false}
               onTogglePin={() => handleTogglePin(activeNote.id)}
@@ -851,7 +984,8 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
               onToggleMobileSidebar={() => setIsMobileSidebarOpen(true)}
               onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
               onToggleAttachments={() =>
-                setIsAttachmentDrawerOpen((prev) => !prev)}
+                setIsAttachmentDrawerOpen((prev) => !prev)
+              }
               onToggleOutline={() => setIsOutlineOpen((prev) => !prev)}
               isOutlineOpen={isOutlineOpen}
               onOpenImportExport={() => setIsImportExportOpen(true)}
@@ -934,19 +1068,23 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
             <div className="relative flex flex-1 overflow-hidden">
               <div className="flex flex-1 flex-col overflow-hidden relative">
                 {/* Formatting Toolbar */}
-                {(editorMode === 'write' || editorMode === 'split') && !isNoteTrashed && (
-                  <div className="border-b border-stack-metal/40 bg-stack-surface/80 px-2 py-1 flex items-center justify-between overflow-x-auto shrink-0">
-                    <MarkdownToolbar
-                      onExecuteCommand={handleExecuteCommand}
-                      activeFormatting={activeFormatting}
-                      disabled={isNoteArchived}
-                    />
-                  </div>
-                )}
+                {(editorMode === 'write' || editorMode === 'split') &&
+                  !isNoteTrashed && (
+                    <div className="border-b border-stack-metal/40 bg-stack-surface/80 px-2 py-1 flex items-center justify-between overflow-x-auto shrink-0">
+                      <MarkdownToolbar
+                        onExecuteCommand={handleExecuteCommand}
+                        activeFormatting={activeFormatting}
+                        disabled={isNoteArchived}
+                        onOpenImageModal={() => setIsInsertImageModalOpen(true)}
+                      />
+                      <AttachmentStatusIndicator />
+                    </div>
+                  )}
 
                 {/* Write Mode */}
                 {editorMode === 'write' && (
                   <div className="relative flex-1 h-full overflow-hidden">
+                    <AttachmentDropOverlay isDragging={isDraggingOver} />
                     <EditorStickyActions
                       saveState={saveState}
                       onUndo={() => editorRef.current?.undo()}
@@ -970,6 +1108,9 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
                         onSave={handleExplicitSave}
                         onActiveFormattingChange={setActiveFormatting}
                         onSlashContextChange={setSlashContext}
+                        onFilesPaste={handleProcessFiles}
+                        onFilesDrop={handleProcessFiles}
+                        onDragStateChange={setIsDraggingOver}
                       />
                     </Suspense>
                     {slashContext && !isNoteTrashed && !isNoteArchived && (
@@ -986,6 +1127,7 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
                 {editorMode === 'split' && (
                   <div className="flex-1 flex flex-col md:flex-row h-full overflow-hidden">
                     <div className="relative flex-1 h-1/2 md:h-full border-b md:border-b-0 md:border-r border-stack-metal/70 overflow-hidden flex flex-col">
+                      <AttachmentDropOverlay isDragging={isDraggingOver} />
                       <EditorStickyActions
                         saveState={saveState}
                         onUndo={() => editorRef.current?.undo()}
@@ -1009,6 +1151,9 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
                           onSave={handleExplicitSave}
                           onActiveFormattingChange={setActiveFormatting}
                           onSlashContextChange={setSlashContext}
+                          onFilesPaste={handleProcessFiles}
+                          onFilesDrop={handleProcessFiles}
+                          onDragStateChange={setIsDraggingOver}
                         />
                       </Suspense>
                       {slashContext && !isNoteTrashed && !isNoteArchived && (
@@ -1124,6 +1269,13 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
       <InstallInstructionsDialog
         isOpen={isInstallDialogOpen}
         onClose={() => setIsInstallDialogOpen(false)}
+      />
+
+      <InsertImageModal
+        isOpen={isInsertImageModalOpen}
+        onClose={() => setIsInsertImageModalOpen(false)}
+        onUploadClick={() => fileInputRef.current?.click()}
+        onInsertExternalUrl={handleInsertExternalUrl}
       />
     </div>
   );

@@ -1,7 +1,9 @@
 import type { Note, Folder } from '~/features/notes/types/note.types';
+import type { Attachment } from '~/features/attachments/types/attachment.types';
 
 export interface StoredAttachment {
   path: string;
+  attachment?: Attachment;
   blob: Blob;
   mimeType: string;
   updatedAt: number;
@@ -147,7 +149,9 @@ export const userWorkspaceStorage = {
         if (raw) {
           const parsed = JSON.parse(raw);
           return {
-            sidebarMode: ['expanded', 'compact', 'zen'].includes(parsed.sidebarMode)
+            sidebarMode: ['expanded', 'compact', 'zen'].includes(
+              parsed.sidebarMode
+            )
               ? parsed.sidebarMode
               : DEFAULT_LAYOUT.sidebarMode,
             sidebarWidth:
@@ -175,12 +179,16 @@ export const userWorkspaceStorage = {
         settings.sidebarWidth !== undefined
           ? Math.max(220, Math.min(420, settings.sidebarWidth))
           : current.sidebarWidth,
-      expandedFolderIds: settings.expandedFolderIds ?? current.expandedFolderIds,
+      expandedFolderIds:
+        settings.expandedFolderIds ?? current.expandedFolderIds,
     };
     memoryLayouts.set(sub, next);
     if (typeof window !== 'undefined' && window.localStorage) {
       try {
-        localStorage.setItem(`stack_layout_${hashSub(sub)}`, JSON.stringify(next));
+        localStorage.setItem(
+          `stack_layout_${hashSub(sub)}`,
+          JSON.stringify(next)
+        );
       } catch {}
     }
     return next;
@@ -217,7 +225,8 @@ export const userWorkspaceStorage = {
           notes.forEach((note) => store.put(note));
           tx.oncomplete = () => resolve();
           tx.onerror = () => reject(tx.error);
-          tx.onabort = () => reject(tx.error || new Error('Transaction aborted'));
+          tx.onabort = () =>
+            reject(tx.error || new Error('Transaction aborted'));
         });
       } catch (err) {
         getMemoryPartition(sub).notes = prev;
@@ -257,7 +266,8 @@ export const userWorkspaceStorage = {
           folders.forEach((folder) => store.put(folder));
           tx.oncomplete = () => resolve();
           tx.onerror = () => reject(tx.error);
-          tx.onabort = () => reject(tx.error || new Error('Transaction aborted'));
+          tx.onabort = () =>
+            reject(tx.error || new Error('Transaction aborted'));
         });
       } catch (err) {
         getMemoryPartition(sub).folders = prev;
@@ -272,7 +282,7 @@ export const userWorkspaceStorage = {
   async getAttachment(
     sub: string,
     path: string
-  ): Promise<{ blob: Blob; mimeType: string } | null> {
+  ): Promise<{ blob: Blob; mimeType: string; attachment?: Attachment } | null> {
     try {
       const db = await openUserDb(sub);
       return new Promise((resolve, reject) => {
@@ -284,6 +294,7 @@ export const userWorkspaceStorage = {
             resolve({
               blob: req.result.blob,
               mimeType: req.result.mimeType,
+              attachment: req.result.attachment,
             });
           } else {
             resolve(null);
@@ -293,18 +304,45 @@ export const userWorkspaceStorage = {
       });
     } catch {
       const att = getMemoryPartition(sub).attachments.get(path);
-      return att ? { blob: att.blob, mimeType: att.mimeType } : null;
+      return att
+        ? { blob: att.blob, mimeType: att.mimeType, attachment: att.attachment }
+        : null;
     }
+  },
+
+  async getAllAttachments(sub: string): Promise<StoredAttachment[]> {
+    try {
+      const db = await openUserDb(sub);
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_ATTACHMENTS, 'readonly');
+        const store = tx.objectStore(STORE_ATTACHMENTS);
+        const req = store.getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+      });
+    } catch {
+      return Array.from(getMemoryPartition(sub).attachments.values());
+    }
+  },
+
+  async getAttachmentsByNoteId(
+    sub: string,
+    noteId: string
+  ): Promise<StoredAttachment[]> {
+    const all = await this.getAllAttachments(sub);
+    return all.filter((a) => a.attachment?.noteId === noteId);
   },
 
   async saveAttachment(
     sub: string,
     path: string,
     blob: Blob,
-    mimeType: string
+    mimeType: string,
+    attachment?: Attachment
   ): Promise<void> {
     const record: StoredAttachment = {
       path,
+      attachment,
       blob,
       mimeType,
       updatedAt: Date.now(),
@@ -334,6 +372,13 @@ export const userWorkspaceStorage = {
         req.onsuccess = () => resolve();
         req.onerror = () => reject(req.error);
       });
+    }
+  },
+
+  async deleteAttachmentsByNote(sub: string, noteId: string): Promise<void> {
+    const noteAttachments = await this.getAttachmentsByNoteId(sub, noteId);
+    for (const att of noteAttachments) {
+      await this.deleteAttachment(sub, att.path);
     }
   },
 

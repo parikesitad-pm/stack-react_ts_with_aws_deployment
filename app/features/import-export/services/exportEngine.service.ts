@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
 import type { Note } from '~/features/notes/types/note.types';
 import type { Attachment } from '~/features/attachments/types/attachment.types';
+import { attachmentRepository } from '~/features/attachments/services/attachment.repository';
 import type { StackManifest } from '../types/migration.types';
 
 function sanitizeFilename(title: string): string {
@@ -48,11 +49,9 @@ export const exportEngineService = {
     if (noteAttachments.length > 0) {
       const assetsFolder = zip.folder('assets');
       for (const att of noteAttachments) {
-        if (att.dataUrl) {
-          const base64Data = att.dataUrl.split(',')[1];
-          if (base64Data) {
-            assetsFolder?.file(att.name, base64Data, { base64: true });
-          }
+        const blob = await attachmentRepository.getAttachmentBlob(att.logicalPath);
+        if (blob) {
+          assetsFolder?.file(att.fileName, blob);
         }
       }
     }
@@ -89,14 +88,12 @@ export const exportEngineService = {
 
     // Add all assets & attachments
     for (const att of attachments) {
-      if (att.dataUrl) {
-        const base64Data = att.dataUrl.split(',')[1];
-        if (base64Data) {
-          if (att.mimeType.startsWith('image/')) {
-            assetsFolder?.file(att.name, base64Data, { base64: true });
-          } else {
-            attachmentsFolder?.file(att.name, base64Data, { base64: true });
-          }
+      const blob = await attachmentRepository.getAttachmentBlob(att.logicalPath);
+      if (blob) {
+        if (att.mimeType.startsWith('image/')) {
+          assetsFolder?.file(att.fileName, blob);
+        } else {
+          attachmentsFolder?.file(att.fileName, blob);
         }
       }
     }

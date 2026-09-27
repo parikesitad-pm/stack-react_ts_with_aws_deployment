@@ -15,10 +15,14 @@ import {
   Table,
   Minus,
 } from 'lucide-react';
-import type { ActiveFormattingState, MarkdownCommand } from '../types/editor.types';
+import type {
+  ActiveFormattingState,
+  MarkdownCommand,
+} from '../types/editor.types';
 
 export interface MarkdownToolbarProps {
   onExecuteCommand: (command: MarkdownCommand) => void;
+  onOpenImageModal?: () => void;
   activeFormatting?: ActiveFormattingState;
   disabled?: boolean;
   className?: string;
@@ -137,6 +141,7 @@ const TOOLBAR_ITEMS: ToolbarItem[] = [
 
 export function MarkdownToolbar({
   onExecuteCommand,
+  onOpenImageModal,
   activeFormatting = {
     bold: false,
     italic: false,
@@ -162,14 +167,22 @@ export function MarkdownToolbar({
       {TOOLBAR_ITEMS.map((item) => {
         const Icon = item.icon;
         const active = item.isActive ? item.isActive(activeFormatting) : false;
-        const tooltip = item.shortcut ? `${item.label} (${item.shortcut})` : item.label;
+        const tooltip = item.shortcut
+          ? `${item.label} (${item.shortcut})`
+          : item.label;
 
         return (
           <button
             key={item.id}
             type="button"
             disabled={disabled}
-            onClick={() => onExecuteCommand(item.id)}
+            onClick={() => {
+              if (item.id === 'image' && onOpenImageModal) {
+                onOpenImageModal();
+              } else {
+                onExecuteCommand(item.id);
+              }
+            }}
             title={tooltip}
             aria-label={tooltip}
             aria-pressed={active}

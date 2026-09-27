@@ -136,3 +136,13 @@ For developers using browsers where the standard Chrome/Firefox extension is una
 - **Revision Safety & Debounced Autosave**: Local autosave pipeline tracks `noteId`, `sub`, and incremental `revision`. Stale revisions cannot overwrite newer revisions. Explicit `flush()` is executed before note switching, archiving, trashing, logout, or `pagehide`.
 - **Truthful Status Reporting**: The editor truthfully displays `"Saved locally"` or `"Offline — saved locally"`. It never simulates or falsely reports `"Saved to cloud"` ahead of AWS cloud sync implementation.
 
+---
+
+## Attachment & Offline Resilience Invariants
+
+- **Binary Blob Storage**: Attachments are stored as binary `Blob`/`ArrayBuffer` inside user-scoped IndexedDB partitions (`stack_user_{hash(sub)}`). Base64 data strings are never stored in notes or IndexedDB attachment records.
+- **Stable Logical Paths**: Canonical Markdown persists only deterministic relative paths (`./assets/filename.webp` or `./assets/doc.pdf`). Ephemeral `blob:`, `data:image/base64`, or expiring presigned URLs are never written to Markdown document content.
+- **Client-Side Image Optimization**: Images are automatically scaled to a max long edge of 2560px and encoded as WebP at ~0.82 quality. Vector SVG files are never rasterized, animated GIF frames are never flattened, and already-efficient images (≤ 150KB WebP/JPEG) are preserved without recompression. A strict 25MB file size limit is enforced.
+- **Reference-Counted URL Lifecycle**: In-memory browser object URLs are managed with reference counting in `objectUrlCache`. Identical paths share the exact same object URL between Split preview and Read modes. URLs are revoked only when their reference count drops to 0, or on logout/account switch via `clearUser(sub)`.
+- **Truthful Cloud Status**: If `VITE_API_BASE_URL` is unconfigured, attachments remain strictly in `local-only` state. The UI displays `"Available locally"` and never falsely claims `"Uploaded"` or `"Synced to cloud"`.
+- **Lifecycle & Multi-User Isolation**: Attachments are scoped to `noteId` and user `sub`. Trashing or archiving a note preserves its attachments; permanent note deletion or Danger Zone account deletion cleanly removes all associated binary blobs and metadata.

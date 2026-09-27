@@ -262,7 +262,12 @@ describe('Sprint 4: Markdown Editor UX Test Suite', () => {
     it('flushes pending save immediately without waiting for timer', async () => {
       const persistMock = vi.fn().mockResolvedValue(undefined);
 
-      controller.queueSave('note-1', 'auth0|test-sub', '# Urgent Content', persistMock);
+      controller.queueSave(
+        'note-1',
+        'auth0|test-sub',
+        '# Urgent Content',
+        persistMock
+      );
       expect(persistMock).not.toHaveBeenCalled();
 
       await controller.flush('note-1');
@@ -281,15 +286,27 @@ describe('Sprint 4: Markdown Editor UX Test Suite', () => {
       });
 
       const persistSlow = vi.fn().mockImplementation(() => slowPromise);
-      const persistFast = vi.fn().mockImplementation(async (id: string, c: string) => {
-        savedWrites.push(c);
-      });
+      const persistFast = vi
+        .fn()
+        .mockImplementation(async (id: string, c: string) => {
+          savedWrites.push(c);
+        });
 
       // Queue revision 1
-      controller.queueSave('note-1', 'auth0|test-sub', 'Revision 1', persistSlow);
+      controller.queueSave(
+        'note-1',
+        'auth0|test-sub',
+        'Revision 1',
+        persistSlow
+      );
 
       // Queue revision 2 rapidly
-      controller.queueSave('note-1', 'auth0|test-sub', 'Revision 2', persistFast);
+      controller.queueSave(
+        'note-1',
+        'auth0|test-sub',
+        'Revision 2',
+        persistFast
+      );
 
       // Flush revision 2
       await controller.flush('note-1');
@@ -307,7 +324,12 @@ describe('Sprint 4: Markdown Editor UX Test Suite', () => {
       const persistA = vi.fn().mockResolvedValue(undefined);
       const persistB = vi.fn().mockResolvedValue(undefined);
 
-      controller.queueSave('note-user-A', 'sub-alice', 'Alice Content', persistA);
+      controller.queueSave(
+        'note-user-A',
+        'sub-alice',
+        'Alice Content',
+        persistA
+      );
       controller.queueSave('note-user-B', 'sub-bob', 'Bob Content', persistB);
 
       await controller.flush('note-user-A');

@@ -29,8 +29,8 @@ export function AttachmentDrawer({
 
   const copyPath = (attachment: Attachment) => {
     const syntax = attachment.mimeType.startsWith('image/')
-      ? `![${attachment.name}](${attachment.localPath})`
-      : `[${attachment.name}](${attachment.localPath})`;
+      ? `![${attachment.fileName}](${attachment.logicalPath})`
+      : `[${attachment.fileName}](${attachment.logicalPath})`;
     navigator.clipboard.writeText(syntax);
     setCopiedId(attachment.id);
     setTimeout(() => setCopiedId(null), 1500);
@@ -86,10 +86,10 @@ export function AttachmentDrawer({
                     )}
                     <div className="truncate">
                       <p className="text-xs text-stack-bone truncate font-medium">
-                        {att.name}
+                        {att.fileName}
                       </p>
                       <p className="text-[10px] text-stack-steel">
-                        {(att.size / 1024).toFixed(1)} KB · {att.localPath}
+                        {(att.byteSize / 1024).toFixed(1)} KB · {att.logicalPath}
                       </p>
                     </div>
                   </div>

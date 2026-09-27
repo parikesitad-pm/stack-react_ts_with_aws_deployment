@@ -1,5 +1,8 @@
 import type { EditorView } from '@codemirror/view';
-import type { ActiveFormattingState, MarkdownCommand } from '../types/editor.types';
+import type {
+  ActiveFormattingState,
+  MarkdownCommand,
+} from '../types/editor.types';
 
 export const markdownCommandService = {
   /**
@@ -166,7 +169,10 @@ export const markdownCommandService = {
       const inserted = `${marker}${placeholder}${marker}`;
       view.dispatch({
         changes: { from, to, insert: inserted },
-        selection: { anchor: from + mLen, head: from + mLen + placeholder.length },
+        selection: {
+          anchor: from + mLen,
+          head: from + mLen + placeholder.length,
+        },
       });
       view.focus?.();
       return;
@@ -208,7 +214,10 @@ export const markdownCommandService = {
     const wrapped = `${marker}${selectedText}${marker}`;
     view.dispatch({
       changes: { from, to, insert: wrapped },
-      selection: { anchor: from + mLen, head: from + mLen + selectedText.length },
+      selection: {
+        anchor: from + mLen,
+        head: from + mLen + selectedText.length,
+      },
     });
     view.focus?.();
   },
@@ -235,14 +244,24 @@ export const markdownCommandService = {
         // Toggle off: remove heading prefix
         view.dispatch({
           changes: { from: line.from, to: line.to, insert: content },
-          selection: { anchor: Math.min(line.from + content.length, view.state.selection.main.head) },
+          selection: {
+            anchor: Math.min(
+              line.from + content.length,
+              view.state.selection.main.head
+            ),
+          },
         });
       } else {
         // Switch level cleanly
         const replacement = `${targetPrefix}${content}`;
         view.dispatch({
           changes: { from: line.from, to: line.to, insert: replacement },
-          selection: { anchor: Math.min(line.from + replacement.length, view.state.selection.main.head) },
+          selection: {
+            anchor: Math.min(
+              line.from + replacement.length,
+              view.state.selection.main.head
+            ),
+          },
         });
       }
     } else {
@@ -265,7 +284,8 @@ export const markdownCommandService = {
     const startLine = doc.lineAt(from);
     const endLine = doc.lineAt(to);
 
-    const lines: { number: number; from: number; to: number; text: string }[] = [];
+    const lines: { number: number; from: number; to: number; text: string }[] =
+      [];
     for (let i = startLine.number; i <= endLine.number; i++) {
       lines.push(doc.line(i));
     }
@@ -282,7 +302,9 @@ export const markdownCommandService = {
       regex = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
     }
 
-    const allHavePrefix = lines.every((l) => l.text.trim().length === 0 || regex.test(l.text));
+    const allHavePrefix = lines.every(
+      (l) => l.text.trim().length === 0 || regex.test(l.text)
+    );
 
     const changes = lines.map((l) => {
       if (allHavePrefix) {
@@ -309,13 +331,16 @@ export const markdownCommandService = {
     const startLine = doc.lineAt(from);
     const endLine = doc.lineAt(to);
 
-    const lines: { number: number; from: number; to: number; text: string }[] = [];
+    const lines: { number: number; from: number; to: number; text: string }[] =
+      [];
     for (let i = startLine.number; i <= endLine.number; i++) {
       lines.push(doc.line(i));
     }
 
     const numRegex = /^\d+\.\s+/;
-    const allHavePrefix = lines.every((l) => l.text.trim().length === 0 || numRegex.test(l.text));
+    const allHavePrefix = lines.every(
+      (l) => l.text.trim().length === 0 || numRegex.test(l.text)
+    );
 
     let index = 1;
     const changes = lines.map((l) => {
@@ -372,8 +397,11 @@ export const markdownCommandService = {
     if (!empty) {
       const selected = doc.sliceString(from, to);
       initial.bold = selected.startsWith('**') && selected.endsWith('**');
-      initial.italic = (selected.startsWith('*') && selected.endsWith('*')) || (selected.startsWith('_') && selected.endsWith('_'));
-      initial.strikethrough = selected.startsWith('~~') && selected.endsWith('~~');
+      initial.italic =
+        (selected.startsWith('*') && selected.endsWith('*')) ||
+        (selected.startsWith('_') && selected.endsWith('_'));
+      initial.strikethrough =
+        selected.startsWith('~~') && selected.endsWith('~~');
       initial.inlineCode = selected.startsWith('`') && selected.endsWith('`');
     } else {
       // Check surrounding characters
@@ -381,8 +409,10 @@ export const markdownCommandService = {
       const after2 = doc.sliceString(to, Math.min(doc.length, to + 2));
       if (before2 === '**' && after2 === '**') initial.bold = true;
       if (before2 === '~~' && after2 === '~~') initial.strikethrough = true;
-      if (before2.endsWith('`') && after2.startsWith('`')) initial.inlineCode = true;
-      if (before2.endsWith('*') && after2.startsWith('*')) initial.italic = true;
+      if (before2.endsWith('`') && after2.startsWith('`'))
+        initial.inlineCode = true;
+      if (before2.endsWith('*') && after2.startsWith('*'))
+        initial.italic = true;
     }
 
     return initial;

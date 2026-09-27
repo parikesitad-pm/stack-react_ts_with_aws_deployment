@@ -149,7 +149,8 @@ export class EditorSaveController {
         }
       }
     } catch (err: unknown) {
-      const errorMsg = (err as Error)?.message || 'Failed to persist note locally';
+      const errorMsg =
+        (err as Error)?.message || 'Failed to persist note locally';
       this.notify(noteId, { status: 'local-error', error: errorMsg });
     }
   }

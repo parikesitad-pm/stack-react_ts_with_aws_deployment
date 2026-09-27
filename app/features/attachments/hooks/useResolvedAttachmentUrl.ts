@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { attachmentResolver } from '../services/attachment-resolver.service';
+import { attachmentResolver } from '../services/attachmentResolver.service';
 
 export type AttachmentStatus =
   | 'idle'
@@ -15,7 +15,8 @@ export interface UseResolvedAttachmentUrlResult {
 }
 
 export function useResolvedAttachmentUrl(
-  path?: string
+  path?: string,
+  sub?: string
 ): UseResolvedAttachmentUrlResult {
   const [status, setStatus] = useState<AttachmentStatus>(
     path ? 'resolving' : 'idle'
@@ -36,7 +37,7 @@ export function useResolvedAttachmentUrl(
     setError(null);
 
     attachmentResolver
-      .acquire(path)
+      .acquire(path, sub)
       .then((resolvedUrl) => {
         if (isMounted) {
           setUrl(resolvedUrl);
@@ -52,9 +53,9 @@ export function useResolvedAttachmentUrl(
 
     return () => {
       isMounted = false;
-      attachmentResolver.release(path);
+      attachmentResolver.release(path, sub);
     };
-  }, [path]);
+  }, [path, sub]);
 
   return { status, url, error };
 }

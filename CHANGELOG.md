@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-09-27
+
+### Added
+
+- Local-first attachment repository (`attachmentRepository`) persisted in user-scoped IndexedDB databases (`stack_user_{subHash}`) storing binary blobs as `Blob`/`ArrayBuffer`.
+- Client-side image optimization pipeline (`imageProcessingService`) enforcing max long edge of 2560px, WebP encoding at ~0.82 quality, EXIF metadata stripping via canvas re-encoding, preserving animated GIF frames without flattening, preserving SVG vectors without rasterization, preserving small files (≤ 150KB WebP/JPEG) without re-encoding, and enforcing a 25MB file size limit.
+- Deterministic logical relative paths (`./assets/filename.webp` or `./assets/doc.pdf`) generated via `attachmentPathService` with character sanitization and numeric collision resolution (`-2`, `-3`), ensuring Markdown documents retain clean relative links rather than volatile `blob:` or expired signed URLs.
+- Reference-counted browser object URL cache (`objectUrlCache`) sharing exact blob URLs between Split editor preview and Read mode components, revoking URLs only when reference count drops to 0, with user-scoped eviction (`clearUser`) upon logout or account change.
+- Shared attachment resolver (`attachmentResolverService`) used identically across Split preview and Read mode rendering engines.
+- Generic non-image attachment link component (`AttachmentLink`) rendering compact download chips with file type icons, human-readable byte sizes, and missing attachment recovery fallbacks.
+- Non-blocking image insertion modal (`InsertImageModal`) providing seamless choice between local file upload and external web image URLs.
+- Drag-and-drop overlay (`AttachmentDropOverlay`) and clipboard paste support (`onFilesPaste`/`onFilesDrop`) integrated into CodeMirror document transaction pipeline without bypassing editor authority.
+- Truthful offline resilience queue (`attachmentUploadService`) with non-blocking reconnect retry, bounded exponential backoff, and strict reporting that keeps attachments in `local-only` state when remote cloud endpoints are unconfigured without falsely claiming "Uploaded" or "Synced to cloud".
+- Note attachment lifecycle management: attachments are note-scoped (`attachment.noteId`), preserved across Archive and Trash states, and deleted only upon permanent note deletion or Danger Zone account deletion.
+- Comprehensive Sprint 5 test suite (`attachment.test.ts`) covering path generation, image optimization, multi-user IndexedDB isolation, object URL refcounting, shared resolution, and offline truthfulness (all 94/94 tests passing).
+
+### Changed
+
+- Updated `CodeMirrorEditor` to support imperative `insertText` handles and DOM event handlers for drag/drop and clipboard image pastes.
+- Updated `MarkdownToolbar` to trigger image modal actions alongside a non-blocking sync status indicator.
+- Updated `WorkspaceView` to clean up user attachment caches on sign-out and delete note attachments on permanent note deletion and empty trash.
+
 ## [0.8.0] - 2026-09-27
 
 ### Added
@@ -43,7 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Strictly separated Folder (*"Where this note lives"*, 0 or 1) from Tag (*"What this note is about"*, 0 or more).
+- Strictly separated Folder (_"Where this note lives"_, 0 or 1) from Tag (_"What this note is about"_, 0 or more).
 - Migrated all unpartitioned `localStorage` layout keys to strictly user-scoped storage namespaces.
 
 ## [0.6.0] - 2026-09-27
