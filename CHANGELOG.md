@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-09-27
+
+### Added
+
+- Canonical profile query state (`useCurrentUserProfile`) with cache key `['profile', sub]`, propagating immediate identity updates to the sidebar, public navbar, account menu, and settings modal.
+- Avatar engine with client-side native canvas center-square crop, resize to max 512×512, and WebP compression with S3 persistent key model (`avatarKey`/`avatarVersion`) avoiding expired presigned URLs.
+- Optional `fullName` profile attribute (1–100 characters) updated without security challenges.
+- Atomic username updates (`PATCH /me/username`) guarded by 6-digit email security challenges, executing single DynamoDB conditional transactions and releasing previous handles while preserving the user's permanent workspace storage database name (`stack_user_{hash(sub)}`).
+- Sensitive email security challenge protocol (`SecurityChallengeService`) with server-side HMAC-SHA256 keyed digests, purpose binding (`change-username`, `change-email`, `change-password`, `add-password`, `delete-account`), 10-minute TTL, and 3-attempt lockout burn.
+- Local Device Lock (6-digit PIN) powered by Web Crypto PBKDF2/SHA-256 with 16-byte random salt, configurable auto-lock timeouts (1, 5, 15, 30 min), exponential lockout cooldown, and safe re-authentication recovery without note loss.
+- Danger Zone permanent account deletion (`DELETE /me`) requiring email security challenge and typed `@username` confirmation, destroying cloud and local storage records.
+- Reorganized, accessible 4-section Profile & Settings Modal (Profile, Security, Account, Danger Zone) with focus trapping, ARIA dialog attributes, and Escape key dismissal.
+- Comprehensive security test suite (`profileSecurity.test.ts`) covering profile updates, atomic handle migrations, cryptographic challenges, PIN lockouts, and danger zone teardowns (32/32 tests passing).
+
+### Changed
+
+- Bound `AppSidebar` and `PublicNavbar` to canonical profile state for real-time avatar thumbnail and handle synchronization.
+- Labeled technical account metadata explicitly as "Account details" and clearly framed Device PIN as a local browser convenience lock.
+
 ## [0.5.0] - 2026-09-27
 
 ### Added

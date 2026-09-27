@@ -2,10 +2,19 @@ import { Link, useLocation } from 'react-router';
 import { ArrowRight, User } from 'lucide-react';
 import { BrandLogo } from '~/components/atoms/BrandLogo';
 import { useAuthSession } from '~/features/auth/hooks/useAuthSession';
+import { useCurrentUserProfile } from '~/features/profile/hooks/useCurrentUserProfile';
 
 export function PublicNavbar() {
   const location = useLocation();
   const { isAuthenticated, user } = useAuthSession();
+  const {
+    username: canonicalUsername,
+    avatarUrl: canonicalAvatarUrl,
+    initials: canonicalInitials,
+  } = useCurrentUserProfile();
+
+  const effectiveUsername = canonicalUsername || user?.username || 'operator';
+  const effectiveAvatarUrl = canonicalAvatarUrl || user?.picture;
 
   const navLinks = [
     { href: '/', label: 'Overview' },
@@ -44,9 +53,22 @@ export function PublicNavbar() {
         <div className="flex items-center gap-3">
           {isAuthenticated ? (
             <div className="flex items-center gap-3">
-              <span className="hidden sm:inline font-mono text-xs text-stack-silver">
-                Hi, @{user?.username || 'operator'}
-              </span>
+              <div className="hidden sm:flex items-center gap-2">
+                <div className="w-5 h-5 rounded-full border border-stack-metal overflow-hidden bg-stack-surface flex items-center justify-center text-[10px] font-mono text-stack-bone shrink-0">
+                  {effectiveAvatarUrl ? (
+                    <img
+                      src={effectiveAvatarUrl}
+                      alt={effectiveUsername}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    canonicalInitials || 'OP'
+                  )}
+                </div>
+                <span className="font-mono text-xs text-stack-silver">
+                  @{effectiveUsername}
+                </span>
+              </div>
               <Link
                 to="/app"
                 className="inline-flex items-center gap-2 rounded border border-stack-red-muted bg-stack-red-slate px-3.5 py-1.5 font-mono text-xs font-medium text-stack-bone shadow-sm transition-all hover:bg-stack-red-hover"

@@ -111,4 +111,8 @@ For developers using browsers where the standard Chrome/Firefox extension is una
 
 - **Never commit secrets**: Never commit `.env`, OAuth provider secrets, Auth0 Client Secret, AWS credentials, or SES SMTP credentials.
 - **Client password invariant**: STACK never stores, logs, or transmits raw user passwords. Password authentication delegates directly to Auth0 Universal Login via PKCE.
-- **Identity invariant**: User identity is derived strictly from the validated Auth0 JWT `sub`. Username is a public profile handle and never an authorization key.
+- **Identity invariant**: User identity is derived strictly from the validated Auth0 JWT `sub`. Changing `@username` will NEVER change `sub` or rename/move the local IndexedDB database (`stack_user_{hash(sub)}`).
+- **Cryptographic Challenge Hashing**: 6-digit email security challenges use server-side HMAC-SHA256 with secrets in AWS Secrets Manager (never plain SHA-256 digests).
+- **Device PIN Scope**: 6-digit PIN is purely a local browser convenience lock using Web Crypto PBKDF2/SHA-256. It does not encrypt notes or replace Auth0 authentication.
+- **Avatar Storage**: S3 presigned URLs are never stored in profile JSON (they expire). Profile persists `avatarKey` and `avatarVersion`, resolving URLs at runtime.
+

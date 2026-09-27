@@ -227,6 +227,304 @@ export class IdentityService {
   }
 
   /**
+   * Updates non-sensitive profile attributes (e.g. fullName).
+   * Does not require an email security challenge.
+   */
+  static async updateProfile(
+    payload: { fullName?: string; avatarKey?: string; avatarVersion?: string },
+    token: string
+  ): Promise<UserProfile> {
+    if (!token) {
+      throw new Error('AUTH_TOKEN_REQUIRED');
+    }
+
+    const apiBase = this.getApiBaseUrl();
+    if (apiBase) {
+      const res = await fetch(`${apiBase}/me/profile`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        throw new Error('FAILED_TO_UPDATE_PROFILE');
+      }
+
+      return (await res.json()) as UserProfile;
+    }
+
+    if (this.isDevOrTest()) {
+      const sub = this.extractSubFromTokenOrFallback(token);
+      return DevMockIdentityAdapter.updateProfile(sub, payload);
+    }
+
+    throw new Error('IDENTITY_BACKEND_UNAVAILABLE');
+  }
+
+  /**
+   * Atomically updates STACK username via single DynamoDB transaction.
+   * Strictly requires a verified email security challenge.
+   */
+  static async updateUsername(
+    payload: { newUsername: string; challengeId: string; challengeCode: string },
+    token: string
+  ): Promise<UserProfile> {
+    if (!token) {
+      throw new Error('AUTH_TOKEN_REQUIRED');
+    }
+
+    const normalized = normalizeUsername(payload.newUsername);
+    const parsed = usernameSchema.safeParse(normalized);
+    if (!parsed.success) {
+      throw new Error(parsed.error.issues[0]?.message || 'Invalid username');
+    }
+
+    const apiBase = this.getApiBaseUrl();
+    if (apiBase) {
+      const res = await fetch(`${apiBase}/me/username`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          newUsername: normalized,
+          challengeId: payload.challengeId,
+          code: payload.challengeCode,
+        }),
+      });
+
+      if (res.status === 409) {
+        throw new Error('USERNAME_TAKEN');
+      }
+      if (res.status === 403 || res.status === 401) {
+        throw new Error('INVALID_CHALLENGE_CODE');
+      }
+      if (!res.ok) {
+        throw new Error('FAILED_TO_UPDATE_USERNAME');
+      }
+
+      return (await res.json()) as UserProfile;
+    }
+
+    if (this.isDevOrTest()) {
+      const sub = this.extractSubFromTokenOrFallback(token);
+      return DevMockIdentityAdapter.updateUsername(
+        sub,
+        normalized,
+        payload.challengeId,
+        payload.challengeCode
+      );
+    }
+
+    throw new Error('IDENTITY_BACKEND_UNAVAILABLE');
+  }
+
+  /**
+   * Updates email address. Strictly requires a verified email security challenge.
+   */
+  static async updateEmail(
+    payload: { newEmail: string; challengeId: string; challengeCode: string },
+    token: string
+  ): Promise<UserProfile> {
+    if (!token) {
+      throw new Error('AUTH_TOKEN_REQUIRED');
+    }
+
+    const apiBase = this.getApiBaseUrl();
+    if (apiBase) {
+      const res = await fetch(`${apiBase}/me/email`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          newEmail: payload.newEmail,
+          challengeId: payload.challengeId,
+          code: payload.challengeCode,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error('FAILED_TO_UPDATE_EMAIL');
+      }
+
+      return (await res.json()) as UserProfile;
+    }
+
+    if (this.isDevOrTest()) {
+      const sub = this.extractSubFromTokenOrFallback(token);
+      return DevMockIdentityAdapter.updateEmail(
+        sub,
+        payload.newEmail,
+        payload.challengeId,
+        payload.challengeCode
+      );
+    }
+
+    throw new Error('IDENTITY_BACKEND_UNAVAILABLE');
+  }
+
+  /**
+   * Deletes custom avatar and resets to initials/provider picture.
+   */
+  static async deleteAvatar(token: string): Promise<UserProfile> {
+    if (!token) {
+      throw new Error('AUTH_TOKEN_REQUIRED');
+    }
+
+    const apiBase = this.getApiBaseUrl();
+    if (apiBase) {
+      const res = await fetch(`${apiBase}/me/avatar`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error('FAILED_TO_DELETE_AVATAR');
+      }
+
+      return (await res.json()) as UserProfile;
+    }
+
+    if (this.isDevOrTest()) {
+      const sub = this.extractSubFromTokenOrFallback(token);
+      return DevMockIdentityAdapter.deleteAvatar(sub);
+    }
+
+    throw new Error('IDENTITY_BACKEND_UNAVAILABLE');
+  }
+
+  /**
+   * Requests password change ticket URL from backend for email/password users.
+   */
+  static async requestPasswordChange(
+    token: string
+  ): Promise<{ ticketUrl?: string; message: string }> {
+    if (!token) {
+      throw new Error('AUTH_TOKEN_REQUIRED');
+    }
+
+    const apiBase = this.getApiBaseUrl();
+    if (apiBase) {
+      const res = await fetch(`${apiBase}/me/password/change`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error('FAILED_TO_REQUEST_PASSWORD_CHANGE');
+      }
+
+      return (await res.json()) as { ticketUrl?: string; message: string };
+    }
+
+    if (this.isDevOrTest()) {
+      return {
+        ticketUrl: 'https://stack-md.online/auth/login?mode=reset_password',
+        message: 'Password reset link dispatched.',
+      };
+    }
+
+    throw new Error('IDENTITY_BACKEND_UNAVAILABLE');
+  }
+
+  /**
+   * Requests password setup for social users.
+   * If Auth0 account linking is not configured on the tenant, reports explicit blocker.
+   */
+  static async requestPasswordAdd(
+    token: string
+  ): Promise<{ ticketUrl?: string; message: string }> {
+    if (!token) {
+      throw new Error('AUTH_TOKEN_REQUIRED');
+    }
+
+    const apiBase = this.getApiBaseUrl();
+    if (apiBase) {
+      const res = await fetch(`${apiBase}/me/password/add`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (res.status === 501) {
+        throw new Error('PASSWORD_SETUP_UNAVAILABLE');
+      }
+      if (!res.ok) {
+        throw new Error('FAILED_TO_ADD_PASSWORD');
+      }
+
+      return (await res.json()) as { ticketUrl?: string; message: string };
+    }
+
+    if (this.isDevOrTest()) {
+      return {
+        ticketUrl: 'https://stack-md.online/auth/login?mode=add_password',
+        message: 'Account linking initiated.',
+      };
+    }
+
+    throw new Error('IDENTITY_BACKEND_UNAVAILABLE');
+  }
+
+  /**
+   * Permanently deletes account, claims, and Auth0 user.
+   * Strictly requires email security challenge and typing @username confirmation.
+   */
+  static async deleteAccount(
+    payload: { confirmedUsername: string; challengeId: string; challengeCode: string },
+    token: string
+  ): Promise<boolean> {
+    if (!token) {
+      throw new Error('AUTH_TOKEN_REQUIRED');
+    }
+
+    const apiBase = this.getApiBaseUrl();
+    if (apiBase) {
+      const res = await fetch(`${apiBase}/me`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          confirmedUsername: payload.confirmedUsername,
+          challengeId: payload.challengeId,
+          code: payload.challengeCode,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error('FAILED_TO_DELETE_ACCOUNT');
+      }
+
+      return true;
+    }
+
+    if (this.isDevOrTest()) {
+      const sub = this.extractSubFromTokenOrFallback(token);
+      return DevMockIdentityAdapter.deleteAccount(
+        sub,
+        payload.confirmedUsername,
+        payload.challengeId,
+        payload.challengeCode
+      );
+    }
+
+    throw new Error('IDENTITY_BACKEND_UNAVAILABLE');
+  }
+
+  /**
    * Helper for dev/test adapter to resolve identity key from mock token
    */
   private static extractSubFromTokenOrFallback(token: string): string {

@@ -114,6 +114,204 @@ export class DevMockIdentityAdapter {
     return userProfile;
   }
 
+  static updateProfile(
+    sub: string,
+    partial: { fullName?: string; avatarKey?: string; avatarVersion?: string }
+  ): UserProfile {
+    const items = this.loadItems();
+    const userPk = `USER#${sub}`;
+    const userItem = items.find(
+      (item) => item.PK === userPk && item.SK === 'PROFILE'
+    );
+    if (!userItem) {
+      throw new Error('PROFILE_NOT_FOUND');
+    }
+
+    const currentProfile = userItem.data as unknown as UserProfile;
+    const updated: UserProfile = {
+      ...currentProfile,
+      fullName: partial.fullName !== undefined ? partial.fullName : currentProfile.fullName,
+      avatarKey: partial.avatarKey !== undefined ? partial.avatarKey : currentProfile.avatarKey,
+      avatarVersion: partial.avatarVersion !== undefined ? partial.avatarVersion : currentProfile.avatarVersion,
+      updatedAt: new Date().toISOString(),
+    };
+
+    userItem.data = updated as unknown as Record<string, unknown>;
+    this.saveItems(items);
+    return updated;
+  }
+
+  static async updateUsername(
+    sub: string,
+    newUsernameRaw: string,
+    challengeId: string,
+    challengeCode: string
+  ): Promise<UserProfile> {
+    const { MockSecurityChallengeAdapter } = await import('./securityChallenge.service');
+    // 1. Verify and consume the email security challenge
+    await MockSecurityChallengeAdapter.verifyAndConsume(
+      challengeId,
+      challengeCode,
+      'change-username',
+      sub
+    );
+
+    const normalized = normalizeUsername(newUsernameRaw);
+    const parsed = usernameSchema.safeParse(normalized);
+    if (!parsed.success) {
+      throw new Error(parsed.error.issues[0]?.message || 'Invalid username');
+    }
+
+    const items = this.loadItems();
+    const userPk = `USER#${sub}`;
+    const userItem = items.find(
+      (item) => item.PK === userPk && item.SK === 'PROFILE'
+    );
+    if (!userItem) {
+      throw new Error('PROFILE_NOT_FOUND');
+    }
+    const currentProfile = userItem.data as unknown as UserProfile;
+
+    if (currentProfile.username === normalized) {
+      return currentProfile; // No-op if same
+    }
+
+    const newClaimPk = `USERNAME#${normalized}`;
+    const existingClaim = items.find((i) => i.PK === newClaimPk);
+    if (existingClaim && existingClaim.data.ownerSub !== sub) {
+      throw new Error('USERNAME_TAKEN');
+    }
+
+    // Atomic transaction: Delete old claim, put new claim, update profile
+    const oldClaimPk = `USERNAME#${currentProfile.username}`;
+    const now = new Date().toISOString();
+    const updatedProfile: UserProfile = {
+      ...currentProfile,
+      username: normalized,
+      updatedAt: now,
+    };
+
+    // Filter out old claim and user profile
+    const filtered = items.filter(
+      (i) => i.PK !== oldClaimPk && i.PK !== userPk && i.PK !== newClaimPk
+    );
+
+    // Add updated profile
+    filtered.push({
+      PK: userPk,
+      SK: 'PROFILE',
+      data: updatedProfile as unknown as Record<string, unknown>,
+      createdAt: userItem.createdAt,
+    });
+
+    // Add new claim
+    filtered.push({
+      PK: newClaimPk,
+      SK: 'CLAIM',
+      data: { ownerSub: sub, username: normalized },
+      createdAt: now,
+    });
+
+    this.saveItems(filtered);
+    return updatedProfile;
+  }
+
+  static async updateEmail(
+    sub: string,
+    newEmail: string,
+    challengeId: string,
+    challengeCode: string
+  ): Promise<UserProfile> {
+    const { MockSecurityChallengeAdapter } = await import('./securityChallenge.service');
+    await MockSecurityChallengeAdapter.verifyAndConsume(
+      challengeId,
+      challengeCode,
+      'change-email',
+      sub
+    );
+
+    const items = this.loadItems();
+    const userPk = `USER#${sub}`;
+    const userItem = items.find(
+      (item) => item.PK === userPk && item.SK === 'PROFILE'
+    );
+    if (!userItem) {
+      throw new Error('PROFILE_NOT_FOUND');
+    }
+
+    const currentProfile = userItem.data as unknown as UserProfile;
+    const updated: UserProfile = {
+      ...currentProfile,
+      email: newEmail.trim().toLowerCase(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    userItem.data = updated as unknown as Record<string, unknown>;
+    this.saveItems(items);
+    return updated;
+  }
+
+  static deleteAvatar(sub: string): UserProfile {
+    const items = this.loadItems();
+    const userPk = `USER#${sub}`;
+    const userItem = items.find(
+      (item) => item.PK === userPk && item.SK === 'PROFILE'
+    );
+    if (!userItem) {
+      throw new Error('PROFILE_NOT_FOUND');
+    }
+
+    const currentProfile = userItem.data as unknown as UserProfile;
+    const { avatarKey, avatarVersion, avatarUrl, ...rest } = currentProfile;
+    const updated: UserProfile = {
+      ...rest,
+      updatedAt: new Date().toISOString(),
+    };
+
+    userItem.data = updated as unknown as Record<string, unknown>;
+    this.saveItems(items);
+    return updated;
+  }
+
+  static async deleteAccount(
+    sub: string,
+    confirmedUsername: string,
+    challengeId: string,
+    challengeCode: string
+  ): Promise<boolean> {
+    const items = this.loadItems();
+    const userPk = `USER#${sub}`;
+    const userItem = items.find(
+      (item) => item.PK === userPk && item.SK === 'PROFILE'
+    );
+    if (!userItem) {
+      throw new Error('PROFILE_NOT_FOUND');
+    }
+
+    const currentProfile = userItem.data as unknown as UserProfile;
+    const normalizedConfirmed = normalizeUsername(confirmedUsername);
+    if (normalizedConfirmed !== currentProfile.username) {
+      throw new Error('USERNAME_CONFIRMATION_MISMATCH');
+    }
+
+    const { MockSecurityChallengeAdapter } = await import('./securityChallenge.service');
+    await MockSecurityChallengeAdapter.verifyAndConsume(
+      challengeId,
+      challengeCode,
+      'delete-account',
+      sub
+    );
+
+    const claimPk = `USERNAME#${currentProfile.username}`;
+    // Remove profile and username claim
+    const remaining = items.filter(
+      (i) => i.PK !== userPk && i.PK !== claimPk
+    );
+    this.saveItems(remaining);
+    return true;
+  }
+
+
   private static loadItems(): MockDynamoItem[] {
     if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
       try {

@@ -303,4 +303,24 @@ export const userWorkspaceStorage = {
       // In-memory partition updated
     }
   },
+
+  /**
+   * Completely destroys all local IndexedDB data and memory partitions for a user.
+   * Executed strictly during Danger Zone account deletion.
+   */
+  async clearUserData(sub: string): Promise<void> {
+    this.closeConnection(sub);
+    memoryPartitions.delete(sub);
+
+    if (typeof window !== 'undefined' && 'indexedDB' in window) {
+      const dbName = getWorkspaceDbName(sub);
+      await new Promise<void>((resolve) => {
+        const req = window.indexedDB.deleteDatabase(dbName);
+        req.onsuccess = () => resolve();
+        req.onerror = () => resolve();
+        req.onblocked = () => resolve();
+      });
+    }
+  },
 };
+
