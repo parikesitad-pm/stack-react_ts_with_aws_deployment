@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-09-27
+
+### Added
+
+- Authoritative CodeMirror Markdown-first editing engine maintaining raw Markdown text as the sole source of truth across transactions and undo/redo history.
+- Pure Markdown transformation service (`markdownCommandService`) supporting 15 formatting actions: Heading 1, Heading 2, Bold, Italic, Strikethrough, Blockquote, Inline Code, Fenced Code Block, Link, Image, Table, Checklist, Bullet List, Numbered List, and Horizontal Rule with placeholder insertion, toggle-off behavior, multiline prefixing, and clean heading level switching without hash stacking.
+- Compact formatting toolbar (`MarkdownToolbar`) with square/beveled technical aesthetic, real-time active formatting detection, shortcut indicators in tooltips, and horizontal scrolling on mobile viewports.
+- Keyboard-first Slash Command palette (`SlashCommandMenu`) triggered on line start or after indentation (`/^(\s*)\/([a-zA-Z0-9_-]*)$/`), with fuzzy keyword filtering, keyboard navigation (Arrow Up/Down, Enter/Tab, Escape), mouse/touch selection, and viewport clamping, strictly rejecting slash triggers inside URLs, file paths, or fractions.
+- Editor action bar (`EditorStickyActions`) with native Undo/Redo, Explicit Save (`Ctrl/Cmd+S`), Copy All raw Markdown to clipboard with visual confirmation, and truthful save state status badge.
+- Local debounced autosave pipeline (`editorSaveService`) with 500ms debounce, revision safety (`noteId`, `sub`, `revision`), race condition rejection, and immediate explicit `flush()` before note switching, archiving, trashing, logout, and `pagehide`.
+- Truthful save state machine reporting `idle`, `dirty`, `saving-local`, `saved-local`, `offline-local`, and `local-error` without falsely claiming cloud sync.
+- Comprehensive Markdown editor test suite (`markdownEditor.test.ts`) covering inline formatting, level switching, multiline prefixes, structural blocks, slash command guardrails, and debounced revision safety (77/77 tests passing).
+
+### Changed
+
+- Integrated formatting toolbar, sticky action controls, and slash command palette into both Write Mode and Split Mode.
+- Ensured note switching, archiving, and trashing flush pending saves synchronously before mutating active note selection.
+
 ## [0.7.0] - 2026-09-27
 
 ### Added

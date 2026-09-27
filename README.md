@@ -126,3 +126,13 @@ For developers using browsers where the standard Chrome/Firefox extension is una
 - **Partitioned User Layout**: Layout preferences (`sidebarMode`, `sidebarWidth`, `expandedFolderIds`) are isolated strictly per-user via `stack_layout_{hashSub(sub)}` with memory fallback. Unpartitioned global keys are forbidden.
 - **Persistence Atomicity**: UI mutations employ optimistic updates backed by rollback on IndexedDB failure.
 
+---
+
+## Markdown Editor UX Invariants
+
+- **Markdown-first Authority**: CodeMirror's document state and transactions are the single authoritative source of truth during active editing. Raw Markdown text is never shadowed by rich HTML DOM state.
+- **Formatting Transformation Layer**: Pure CodeMirror transaction layer supporting all 15 core Markdown actions with placeholder insertion, toggle-off behavior, multiline prefixing, ATX heading level switching without hash stacking, and selection preservation.
+- **Slash Command Isolation**: Slash trigger (`/`) is strictly constrained to line start or leading indentation (`/^(\s*)\/([a-zA-Z0-9_-]*)$/`). It is strictly rejected inside URLs, file paths, fractions, and middle of sentences.
+- **Revision Safety & Debounced Autosave**: Local autosave pipeline tracks `noteId`, `sub`, and incremental `revision`. Stale revisions cannot overwrite newer revisions. Explicit `flush()` is executed before note switching, archiving, trashing, logout, or `pagehide`.
+- **Truthful Status Reporting**: The editor truthfully displays `"Saved locally"` or `"Offline — saved locally"`. It never simulates or falsely reports `"Saved to cloud"` ahead of AWS cloud sync implementation.
+

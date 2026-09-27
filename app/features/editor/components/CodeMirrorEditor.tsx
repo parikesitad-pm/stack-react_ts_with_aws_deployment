@@ -1,18 +1,47 @@
-import { useEffect, useRef } from 'react';
+import {
+  useEffect,
+  useRef,
+  useImperativeHandle,
+  forwardRef,
+} from 'react';
 import { EditorState } from '@codemirror/state';
 import {
   EditorView,
   lineNumbers,
   highlightActiveLineGutter,
   highlightActiveLine,
+  keymap,
 } from '@codemirror/view';
 import { markdown } from '@codemirror/lang-markdown';
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
-import { keymap } from '@codemirror/view';
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  undo as cmUndo,
+  redo as cmRedo,
+} from '@codemirror/commands';
+import { markdownCommandService } from '../services/markdownCommand.service';
+import type {
+  ActiveFormattingState,
+  MarkdownCommand,
+  SlashContext,
+} from '../types/editor.types';
+
+export interface CodeMirrorEditorHandle {
+  executeCommand: (command: MarkdownCommand) => void;
+  undo: () => void;
+  redo: () => void;
+  getRawMarkdown: () => string;
+  focus: () => void;
+  replaceSlashQuery: (from: number, to: number, command: MarkdownCommand) => void;
+}
 
 export interface CodeMirrorEditorProps {
   value: string;
   onChange: (value: string) => void;
+  onSave?: () => void;
+  onActiveFormattingChange?: (formatting: ActiveFormattingState) => void;
+  onSlashContextChange?: (context: SlashContext | null) => void;
   className?: string;
 }
 
@@ -55,16 +84,150 @@ const industrialTheme = EditorView.theme(
   { dark: true }
 );
 
-export function CodeMirrorEditor({
-  value,
-  onChange,
-  className = '',
-}: CodeMirrorEditorProps) {
+export const CodeMirrorEditor = forwardRef<
+  CodeMirrorEditorHandle,
+  CodeMirrorEditorProps
+>(function CodeMirrorEditor(
+  {
+    value,
+    onChange,
+    onSave,
+    onActiveFormattingChange,
+    onSlashContextChange,
+    className = '',
+  },
+  ref
+) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
 
+  // Keep callback refs fresh without resetting CodeMirror instance
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  const onSaveRef = useRef(onSave);
+  onSaveRef.current = onSave;
+
+  const onActiveFormattingChangeRef = useRef(onActiveFormattingChange);
+  onActiveFormattingChangeRef.current = onActiveFormattingChange;
+
+  const onSlashContextChangeRef = useRef(onSlashContextChange);
+  onSlashContextChangeRef.current = onSlashContextChange;
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      executeCommand(command: MarkdownCommand) {
+        if (viewRef.current) {
+          markdownCommandService.execute(viewRef.current, command);
+          onActiveFormattingChangeRef.current?.(
+            markdownCommandService.detectActiveFormatting(viewRef.current)
+          );
+        }
+      },
+      undo() {
+        if (viewRef.current) {
+          cmUndo(viewRef.current);
+        }
+      },
+      redo() {
+        if (viewRef.current) {
+          cmRedo(viewRef.current);
+        }
+      },
+      getRawMarkdown() {
+        return viewRef.current?.state.doc.toString() ?? value;
+      },
+      focus() {
+        viewRef.current?.focus();
+      },
+      replaceSlashQuery(from: number, to: number, command: MarkdownCommand) {
+        const view = viewRef.current;
+        if (!view) return;
+
+        // Delete the /query text
+        view.dispatch({
+          changes: { from, to, insert: '' },
+          selection: { anchor: from },
+        });
+
+        // Execute the markdown command at the cleared position
+        markdownCommandService.execute(view, command);
+      },
+    }),
+    [value]
+  );
+
   useEffect(() => {
     if (!containerRef.current) return;
+
+    // Check slash commands on cursor / document change
+    const checkSlashContext = (view: EditorView) => {
+      const { from, empty } = view.state.selection.main;
+      if (!empty) {
+        onSlashContextChangeRef.current?.(null);
+        return;
+      }
+
+      const line = view.state.doc.lineAt(from);
+      const textBefore = line.text.slice(0, from - line.from);
+
+      // Match / only at start of line or after leading whitespace at block start
+      const match = textBefore.match(/^(\s*)\/([a-zA-Z0-9_-]*)$/);
+
+      if (match) {
+        const whitespace = match[1] ?? '';
+        const query = match[2] ?? '';
+        const slashPos = line.from + whitespace.length;
+        const coords = view.coordsAtPos(from);
+
+        onSlashContextChangeRef.current?.({
+          query,
+          from: slashPos,
+          to: from,
+          coords,
+        });
+      } else {
+        onSlashContextChangeRef.current?.(null);
+      }
+    };
+
+    const editorKeymaps = [
+      {
+        key: 'Mod-s',
+        run: () => {
+          onSaveRef.current?.();
+          return true; // Prevent browser default save page
+        },
+      },
+      {
+        key: 'Mod-b',
+        run: (v: EditorView) => {
+          markdownCommandService.execute(v, 'bold');
+          onActiveFormattingChangeRef.current?.(
+            markdownCommandService.detectActiveFormatting(v)
+          );
+          return true;
+        },
+      },
+      {
+        key: 'Mod-i',
+        run: (v: EditorView) => {
+          markdownCommandService.execute(v, 'italic');
+          onActiveFormattingChangeRef.current?.(
+            markdownCommandService.detectActiveFormatting(v)
+          );
+          return true;
+        },
+      },
+      {
+        key: 'Mod-k',
+        run: (v: EditorView) => {
+          markdownCommandService.execute(v, 'link');
+          return true;
+        },
+      },
+    ];
 
     const startState = EditorState.create({
       doc: value,
@@ -73,12 +236,22 @@ export function CodeMirrorEditor({
         highlightActiveLineGutter(),
         highlightActiveLine(),
         history(),
-        keymap.of([...defaultKeymap, ...historyKeymap]),
+        keymap.of([
+          ...editorKeymaps,
+          ...defaultKeymap,
+          ...historyKeymap,
+        ]),
         markdown(),
         industrialTheme,
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
-            onChange(update.state.doc.toString());
+            onChangeRef.current(update.state.doc.toString());
+          }
+          if (update.docChanged || update.selectionSet) {
+            onActiveFormattingChangeRef.current?.(
+              markdownCommandService.detectActiveFormatting(update.view)
+            );
+            checkSlashContext(update.view);
           }
         }),
       ],
@@ -94,9 +267,9 @@ export function CodeMirrorEditor({
     return () => {
       view.destroy();
     };
-  }, []);
+  }, []); // Initialized once per mount
 
-  // Update doc if changed externally (e.g. switching active note)
+  // Controlled update: synchronize external value when active note changes
   useEffect(() => {
     const view = viewRef.current;
     if (view) {
@@ -115,4 +288,4 @@ export function CodeMirrorEditor({
       className={`h-full w-full overflow-hidden font-mono ${className}`}
     />
   );
-}
+});

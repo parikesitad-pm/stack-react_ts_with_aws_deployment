@@ -36,6 +36,17 @@ import { usePwaInstall } from '~/features/pwa/hooks/usePwaInstall';
 import { InstallInstructionsDialog } from '~/features/pwa/components/InstallInstructionsDialog';
 import { userWorkspaceStorage } from '~/features/workspace/services/userWorkspaceStorage';
 import type { ExtendedAuthUser } from '~/features/auth/hooks/useAuthSession';
+import type { CodeMirrorEditorHandle } from '~/features/editor/components/CodeMirrorEditor';
+import { MarkdownToolbar } from '~/features/editor/components/MarkdownToolbar';
+import { EditorStickyActions } from '~/features/editor/components/EditorStickyActions';
+import { SlashCommandMenu } from '~/features/editor/components/SlashCommandMenu';
+import { editorSaveService } from '~/features/editor/services/editorSave.service';
+import type {
+  ActiveFormattingState,
+  MarkdownCommand,
+  SaveState,
+  SlashContext,
+} from '~/features/editor/types/editor.types';
 
 const CodeMirrorEditor = lazy(() =>
   import('~/features/editor/components/CodeMirrorEditor').then((m) => ({
@@ -93,8 +104,51 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
     {}
   );
 
-  const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const editorRef = useRef<CodeMirrorEditorHandle>(null);
+  const notesRef = useRef(notes);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [saveState, setSaveState] = useState<SaveState>({ status: 'idle' });
+  const [activeFormatting, setActiveFormatting] = useState<ActiveFormattingState | undefined>(undefined);
+  const [slashContext, setSlashContext] = useState<SlashContext | null>(null);
+
+  useEffect(() => {
+    notesRef.current = notes;
+  }, [notes]);
+
+  // Subscribe to editor save state changes
+  useEffect(() => {
+    if (!activeNoteId) {
+      setSaveState({ status: 'idle' });
+      return;
+    }
+    setSaveState(editorSaveService.getState(activeNoteId));
+
+    return editorSaveService.subscribe((noteId, state) => {
+      if (noteId === activeNoteId) {
+        setSaveState(state);
+        if (state.status === 'saving-local') {
+          setSyncState('syncing');
+        } else if (state.status === 'saved-local') {
+          setSyncState('saved_locally');
+        } else if (state.status === 'offline-local' || state.status === 'local-error') {
+          setSyncState('offline');
+        }
+      }
+    });
+  }, [activeNoteId]);
+
+  // Flush pending save on pagehide or component unmount
+  useEffect(() => {
+    const handlePageHide = () => {
+      editorSaveService.flush();
+    };
+    window.addEventListener('pagehide', handlePageHide);
+    return () => {
+      window.removeEventListener('pagehide', handlePageHide);
+      editorSaveService.flush();
+    };
+  }, []);
 
   // Load user-scoped notes, folders, and layout settings from isolated storage
   useEffect(() => {
@@ -286,7 +340,16 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
     }
   };
 
-  // Editor Note Updates with debounced auto-save
+  // Explicit Note Selection with flush
+  const handleSelectNote = async (id: string) => {
+    if (activeNoteId && activeNoteId !== id) {
+      await editorSaveService.flush(activeNoteId);
+    }
+    setSlashContext(null);
+    setActiveNoteId(id);
+  };
+
+  // Editor Note Updates with debounced auto-save via editorSaveService
   const handleUpdateNote = (updatedFields: Partial<Note>) => {
     if (!activeNote || isNoteTrashed) return;
 
@@ -301,7 +364,7 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
     );
 
     setNotes(nextNotes);
-    setSyncState('syncing');
+    notesRef.current = nextNotes;
 
     if (typeof window !== 'undefined' && updatedFields.content !== undefined) {
       localStorage.setItem(
@@ -313,25 +376,63 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
       );
     }
 
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current);
-    }
+    const currentNoteId = activeNote.id;
+    const contentToPersist = updatedFields.content ?? activeNote.content;
 
-    saveTimerRef.current = setTimeout(async () => {
-      try {
-        await userWorkspaceStorage.saveNotes(user.sub, nextNotes);
-        setSyncState('saved_locally');
+    editorSaveService.queueSave(
+      currentNoteId,
+      user.sub,
+      contentToPersist,
+      async (id, content) => {
+        const toSave = notesRef.current.map((n) =>
+          n.id === id ? { ...n, content, updatedAt: new Date().toISOString() } : n
+        );
+        await userWorkspaceStorage.saveNotes(user.sub, toSave);
         if (typeof window !== 'undefined') {
-          localStorage.removeItem(`stack_draft_recovery_${activeNote.id}`);
+          localStorage.removeItem(`stack_draft_recovery_${id}`);
         }
-      } catch (err) {
-        console.error('Failed to auto-save note:', err);
-        setSyncState('offline');
       }
-    }, 700);
+    );
   };
 
-  const handleCreateNote = (targetFolderId?: string) => {
+  // Explicit Save (Ctrl/Cmd+S or button)
+  const handleExplicitSave = async () => {
+    if (!activeNote) return;
+    await editorSaveService.flush(activeNote.id);
+  };
+
+  // Copy All Raw Markdown to clipboard with honest success report
+  const handleCopyAll = async (): Promise<boolean> => {
+    const raw = editorRef.current?.getRawMarkdown() ?? activeNote?.content ?? '';
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(raw);
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Failed to copy markdown:', err);
+      return false;
+    }
+  };
+
+  // Execute Markdown Command from toolbar
+  const handleExecuteCommand = (cmd: MarkdownCommand) => {
+    editorRef.current?.executeCommand(cmd);
+  };
+
+  // Execute Slash Command
+  const handleSelectSlashCommand = (cmd: MarkdownCommand, ctx: SlashContext) => {
+    editorRef.current?.replaceSlashQuery(ctx.from, ctx.to, cmd);
+    setSlashContext(null);
+  };
+
+  const handleCreateNote = async (targetFolderId?: string) => {
+    if (activeNoteId) {
+      await editorSaveService.flush(activeNoteId);
+    }
+    setSlashContext(null);
+
     const now = new Date().toISOString();
     const newNote: Note = {
       id: `note_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -483,8 +584,9 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
   };
 
   // Lifecycle transitions: Archive, Trash, Restore, Delete Forever
-  const handleArchiveNote = (noteId: string) => {
-    const nextNotes = noteOrganizationService.archiveNote(noteId, notes);
+  const handleArchiveNote = async (noteId: string) => {
+    await editorSaveService.flush(noteId);
+    const nextNotes = noteOrganizationService.archiveNote(noteId, notesRef.current);
     applyNotesMutation(nextNotes);
     if (activeNoteId === noteId && activeFilter !== 'archive') {
       const remaining = noteOrganizationService.getActiveNotes(nextNotes);
@@ -493,12 +595,13 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
   };
 
   const handleUnarchiveNote = (noteId: string) => {
-    const nextNotes = noteOrganizationService.unarchiveNote(noteId, notes);
+    const nextNotes = noteOrganizationService.unarchiveNote(noteId, notesRef.current);
     applyNotesMutation(nextNotes);
   };
 
-  const handleMoveToTrash = (noteId: string) => {
-    const nextNotes = noteOrganizationService.moveToTrash(noteId, notes);
+  const handleMoveToTrash = async (noteId: string) => {
+    await editorSaveService.flush(noteId);
+    const nextNotes = noteOrganizationService.moveToTrash(noteId, notesRef.current);
     applyNotesMutation(nextNotes);
     if (activeNoteId === noteId && activeFilter !== 'trash') {
       const remaining = noteOrganizationService.getActiveNotes(nextNotes);
@@ -507,12 +610,13 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
   };
 
   const handleRestoreFromTrash = (noteId: string) => {
-    const nextNotes = noteOrganizationService.restoreFromTrash(noteId, notes);
+    const nextNotes = noteOrganizationService.restoreFromTrash(noteId, notesRef.current);
     applyNotesMutation(nextNotes);
   };
 
   const handlePermanentDelete = (noteId: string) => {
-    const nextNotes = noteOrganizationService.permanentlyDeleteNote(noteId, notes);
+    editorSaveService.cancel(noteId);
+    const nextNotes = noteOrganizationService.permanentlyDeleteNote(noteId, notesRef.current);
     applyNotesMutation(nextNotes);
     if (activeNoteId === noteId) {
       const remaining =
@@ -602,6 +706,11 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
   const charCount = activeNote?.content ? activeNote.content.length : 0;
   const readingTimeMinutes = Math.max(1, Math.ceil(wordCount / 200));
 
+  const handleSignOut = async () => {
+    await editorSaveService.flush();
+    onSignOut();
+  };
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-stack-bg font-sans text-stack-bone">
       {/* Hidden File Input for Attachments */}
@@ -618,7 +727,7 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
         notes={notes}
         folders={folders}
         activeNoteId={activeNoteId}
-        onSelectNote={setActiveNoteId}
+        onSelectNote={handleSelectNote}
         onCreateNote={() => handleCreateNote()}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenProfile={() => setIsProfileOpen(true)}
@@ -644,7 +753,7 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
         onPermanentDeleteNote={handlePermanentDelete}
         onEmptyTrash={handleEmptyTrash}
         user={user}
-        onSignOut={onSignOut}
+        onSignOut={handleSignOut}
         canInstallPwa={isInstallable}
         onInstallPwa={triggerInstall}
         className="hidden md:flex"
@@ -665,7 +774,7 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
               folders={folders}
               activeNoteId={activeNoteId}
               onSelectNote={(id) => {
-                setActiveNoteId(id);
+                handleSelectNote(id);
                 setIsMobileSidebarOpen(false);
               }}
               onCreateNote={() => {
@@ -711,7 +820,7 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
               onPermanentDeleteNote={handlePermanentDelete}
               onEmptyTrash={handleEmptyTrash}
               user={user}
-              onSignOut={onSignOut}
+              onSignOut={handleSignOut}
               canInstallPwa={isInstallable}
               onInstallPwa={triggerInstall}
               className="flex w-full h-full"
@@ -824,9 +933,29 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
             {/* Content Pane */}
             <div className="relative flex flex-1 overflow-hidden">
               <div className="flex flex-1 flex-col overflow-hidden relative">
+                {/* Formatting Toolbar */}
+                {(editorMode === 'write' || editorMode === 'split') && !isNoteTrashed && (
+                  <div className="border-b border-stack-metal/40 bg-stack-surface/80 px-2 py-1 flex items-center justify-between overflow-x-auto shrink-0">
+                    <MarkdownToolbar
+                      onExecuteCommand={handleExecuteCommand}
+                      activeFormatting={activeFormatting}
+                      disabled={isNoteArchived}
+                    />
+                  </div>
+                )}
+
                 {/* Write Mode */}
                 {editorMode === 'write' && (
-                  <div className="flex-1 h-full overflow-hidden">
+                  <div className="relative flex-1 h-full overflow-hidden">
+                    <EditorStickyActions
+                      saveState={saveState}
+                      onUndo={() => editorRef.current?.undo()}
+                      onRedo={() => editorRef.current?.redo()}
+                      onSave={handleExplicitSave}
+                      onCopyAll={handleCopyAll}
+                      disabled={isNoteTrashed || isNoteArchived}
+                      className="absolute top-2 right-4 z-20"
+                    />
                     <Suspense
                       fallback={
                         <div className="flex h-full w-full items-center justify-center font-mono text-xs text-stack-steel">
@@ -835,17 +964,37 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
                       }
                     >
                       <CodeMirrorEditor
+                        ref={editorRef}
                         value={activeNote.content || ''}
                         onChange={(content) => handleUpdateNote({ content })}
+                        onSave={handleExplicitSave}
+                        onActiveFormattingChange={setActiveFormatting}
+                        onSlashContextChange={setSlashContext}
                       />
                     </Suspense>
+                    {slashContext && !isNoteTrashed && !isNoteArchived && (
+                      <SlashCommandMenu
+                        context={slashContext}
+                        onSelectCommand={handleSelectSlashCommand}
+                        onClose={() => setSlashContext(null)}
+                      />
+                    )}
                   </div>
                 )}
 
                 {/* Split Mode */}
                 {editorMode === 'split' && (
                   <div className="flex-1 flex flex-col md:flex-row h-full overflow-hidden">
-                    <div className="flex-1 h-1/2 md:h-full border-b md:border-b-0 md:border-r border-stack-metal/70 overflow-hidden">
+                    <div className="relative flex-1 h-1/2 md:h-full border-b md:border-b-0 md:border-r border-stack-metal/70 overflow-hidden flex flex-col">
+                      <EditorStickyActions
+                        saveState={saveState}
+                        onUndo={() => editorRef.current?.undo()}
+                        onRedo={() => editorRef.current?.redo()}
+                        onSave={handleExplicitSave}
+                        onCopyAll={handleCopyAll}
+                        disabled={isNoteTrashed || isNoteArchived}
+                        className="absolute top-2 right-4 z-20"
+                      />
                       <Suspense
                         fallback={
                           <div className="flex h-full w-full items-center justify-center font-mono text-xs text-stack-steel">
@@ -854,10 +1003,21 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
                         }
                       >
                         <CodeMirrorEditor
+                          ref={editorRef}
                           value={activeNote.content || ''}
                           onChange={(content) => handleUpdateNote({ content })}
+                          onSave={handleExplicitSave}
+                          onActiveFormattingChange={setActiveFormatting}
+                          onSlashContextChange={setSlashContext}
                         />
                       </Suspense>
+                      {slashContext && !isNoteTrashed && !isNoteArchived && (
+                        <SlashCommandMenu
+                          context={slashContext}
+                          onSelectCommand={handleSelectSlashCommand}
+                          onClose={() => setSlashContext(null)}
+                        />
+                      )}
                     </div>
                     <div className="flex-1 h-1/2 md:h-full overflow-y-auto bg-stack-surface/30">
                       <MarkdownPreview content={activeNote.content || ''} />
@@ -935,7 +1095,7 @@ export function WorkspaceView({ user, onSignOut }: WorkspaceViewProps) {
         isOpen={isCommandPaletteOpen}
         onClose={() => setIsCommandPaletteOpen(false)}
         notes={notes}
-        onSelectNote={setActiveNoteId}
+        onSelectNote={handleSelectNote}
         onCreateNote={handleCreateNote}
         onOpenSettings={() => setIsSettingsOpen(true)}
       />
