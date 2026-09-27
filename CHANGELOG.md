@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Fixed username availability check collapsing non-2xx responses, backend validation errors, or network issues into false "already taken" collisions.
+- Refactored `UsernameAvailabilityResult` into a strict discriminated union (`available` | `taken` | `error`) with explicit response mapping (200 available/taken, 409 USERNAME_TAKEN, 400 validation failure, 401/403 session refresh, 404 service unavailable, 5xx/network failure).
+- Fixed `updateProfile` in `useAuthSession` dropping updates when initial profile was null, allowing onboarding completion to publish to state and query cache immediately.
+- Added existing profile guard in `hasCompletedOnboarding` (`Boolean(profile?.onboardingCompletedAt || profile?.username)`) to route existing users directly to the workspace without forcing onboarding.
+- Prevented self-collision checks when checking the current user's own username in `ProfileModal`.
+- Added server error guard before onboarding modal in `app.tsx` to prevent forcing users into onboarding during temporary backend degradation.
+
 ## [0.9.0] - 2026-09-27
 
 ### Added

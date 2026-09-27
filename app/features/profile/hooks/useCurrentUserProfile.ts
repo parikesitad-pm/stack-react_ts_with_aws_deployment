@@ -29,7 +29,10 @@ export function useCurrentUserProfile() {
         });
         if (t) token = t;
       } catch (err) {
-        console.warn('[useCurrentUserProfile] getAccessTokenSilently error:', err);
+        console.warn(
+          '[useCurrentUserProfile] getAccessTokenSilently error:',
+          err
+        );
         if (IdentityService.isDevOrTest()) {
           token = sub;
         }

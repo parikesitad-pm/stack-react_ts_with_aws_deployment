@@ -24,6 +24,7 @@ export default function AppPage() {
     isLoading: isAuthLoading,
     user,
     token,
+    profileError,
     hasCompletedOnboarding,
     checkEmailVerified,
     resendVerificationEmail,
@@ -124,6 +125,36 @@ export default function AppPage() {
         }
         onSignOut={signOut}
       />
+    );
+  }
+
+  // Profile fetch failed due to server/network error (not 404 unonboarded)
+  if (profileError && !hasCompletedOnboarding) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-stack-bg font-mono p-4 text-center select-none">
+        <div className="max-w-md p-6 bg-stack-surface border border-stack-metal rounded space-y-4 shadow-xl">
+          <div className="text-stack-red-hover font-bold text-sm">
+            Unable to Connect to Profile Service
+          </div>
+          <p className="text-xs text-stack-steel">
+            Couldn't load your STACK account profile from the server.
+          </p>
+          <div className="flex justify-center gap-3 pt-2">
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-stack-surface-raised border border-stack-metal hover:border-stack-steel text-stack-bone text-xs rounded transition-colors"
+            >
+              Retry
+            </button>
+            <button
+              onClick={() => signOut()}
+              className="px-4 py-2 border border-transparent hover:underline text-stack-steel text-xs"
+            >
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
     );
   }
 

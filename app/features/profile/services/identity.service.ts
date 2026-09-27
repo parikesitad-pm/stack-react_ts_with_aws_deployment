@@ -8,11 +8,28 @@ export interface OnboardingPayload {
   dateOfBirth?: string;
 }
 
-export interface UsernameAvailabilityResult {
-  available: boolean;
-  normalizedUsername: string;
-  suggestions?: string[];
-}
+export type UsernameAvailabilityResult =
+  | {
+      status: 'available';
+      available: true;
+      normalizedUsername: string;
+      suggestions?: never;
+    }
+  | {
+      status: 'taken';
+      available: false;
+      normalizedUsername: string;
+      suggestions?: string[];
+    }
+  | {
+      status: 'error';
+      available: false;
+      code: string;
+      message: string;
+      statusCode?: number;
+      normalizedUsername: string;
+      suggestions?: never;
+    };
 
 export class IdentityService {
   /**
@@ -44,6 +61,10 @@ export class IdentityService {
    * Advisory username availability check.
    * Production: queries GET /usernames/:username/availability
    * Dev/Test fallback: queries DevMockIdentityAdapter
+   *
+   * Invariant:
+   * Only treat username as taken when backend explicitly confirms it.
+   * A backend error or network failure must NEVER masquerade as a collision.
    */
   static async checkAvailability(
     rawUsername: string,
@@ -52,30 +73,129 @@ export class IdentityService {
     const normalized = normalizeUsername(rawUsername);
     const validation = usernameSchema.safeParse(normalized);
     if (!validation.success) {
-      return { available: false, normalizedUsername: normalized };
+      return {
+        status: 'error',
+        available: false,
+        code: 'INVALID_USERNAME',
+        message: validation.error.issues[0]?.message || 'Invalid username.',
+        normalizedUsername: normalized,
+      };
     }
 
     const apiBase = this.getApiBaseUrl();
     if (apiBase) {
+      const endpoint = `${apiBase}/usernames/${encodeURIComponent(normalized)}/availability`;
       try {
-        const res = await fetch(
-          `${apiBase}/usernames/${encodeURIComponent(normalized)}/availability`,
-          {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
+        const res = await fetch(endpoint, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+
+        let body: any = null;
+        const text = await res.text();
+        try {
+          body = text ? JSON.parse(text) : null;
+        } catch {
+          body = null;
+        }
+
+        // Safe debug logging: endpoint path, status, and response body (no secrets/tokens)
+        console.info('[IdentityService] Availability check response:', {
+          endpoint: `/usernames/${normalized}/availability`,
+          status: res.status,
+          responseBody: body || text,
+        });
+
+        // 200 OK: Explicit available confirmation
+        if (res.status === 200) {
+          if (body && typeof body.available === 'boolean') {
+            if (body.available === true) {
+              return {
+                status: 'available',
+                available: true,
+                normalizedUsername: normalized,
+              };
+            } else {
+              return {
+                status: 'taken',
+                available: false,
+                normalizedUsername: normalized,
+                suggestions: this.suggestAlternatives(normalized),
+              };
+            }
           }
-        );
-        if (res.ok) {
-          const data = await res.json();
+        }
+
+        // 409 Conflict: USERNAME_TAKEN
+        if (res.status === 409) {
           return {
-            available: Boolean(data.available),
+            status: 'taken',
+            available: false,
             normalizedUsername: normalized,
-            suggestions: data.available
-              ? undefined
-              : this.suggestAlternatives(normalized),
+            suggestions: this.suggestAlternatives(normalized),
           };
         }
-      } catch (err) {
-        console.error('[IdentityService] Availability check failed:', err);
+
+        // 400 Bad Request: Backend validation failure
+        if (res.status === 400) {
+          return {
+            status: 'error',
+            available: false,
+            code: body?.error || 'INVALID_USERNAME',
+            message:
+              body?.message ||
+              'Username must be 3-24 characters using lowercase letters, numbers, or underscore.',
+            statusCode: 400,
+            normalizedUsername: normalized,
+          };
+        }
+
+        // 401 / 403: Session refresh needed
+        if (res.status === 401 || res.status === 403) {
+          return {
+            status: 'error',
+            available: false,
+            code: 'AUTH_REQUIRED',
+            message: 'Your session needs to be refreshed. Sign in again.',
+            statusCode: res.status,
+            normalizedUsername: normalized,
+          };
+        }
+
+        // 404: Service not available yet
+        if (res.status === 404) {
+          return {
+            status: 'error',
+            available: false,
+            code: 'SERVICE_NOT_FOUND',
+            message: 'Username service is not available yet.',
+            statusCode: 404,
+            normalizedUsername: normalized,
+          };
+        }
+
+        // 5xx or unexpected status
+        return {
+          status: 'error',
+          available: false,
+          code: body?.code || body?.error || `HTTP_${res.status}`,
+          message:
+            body?.message ||
+            "Couldn't check username availability. Try again.",
+          statusCode: res.status,
+          normalizedUsername: normalized,
+        };
+      } catch (err: unknown) {
+        console.error('[IdentityService] Availability check network error:', {
+          endpoint: `/usernames/${normalized}/availability`,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return {
+          status: 'error',
+          available: false,
+          code: 'NETWORK_ERROR',
+          message: "Couldn't check username availability. Try again.",
+          normalizedUsername: normalized,
+        };
       }
     }
 
@@ -83,11 +203,14 @@ export class IdentityService {
       return DevMockIdentityAdapter.checkAvailability(normalized);
     }
 
-    // In production without backend API, local cannot guarantee uniqueness
+    // In production without backend API, never pretend the username is taken
     return {
+      status: 'error',
       available: false,
+      code: 'API_NOT_CONFIGURED',
+      message: 'Username service is not available yet.',
+      statusCode: 404,
       normalizedUsername: normalized,
-      suggestions: this.suggestAlternatives(normalized),
     };
   }
 
@@ -104,6 +227,10 @@ export class IdentityService {
     if (apiBase) {
       try {
         const res = await stackApiFetch('/me', token);
+        console.info('[IdentityService] getProfile response:', {
+          endpoint: '/me',
+          status: res.status,
+        });
         if (res.ok) {
           return (await res.json()) as UserProfile;
         }
@@ -163,13 +290,24 @@ export class IdentityService {
         }),
       });
 
+      console.info('[IdentityService] claimOnboarding response:', {
+        endpoint: '/me/onboarding',
+        status: res.status,
+      });
+
       if (res.status === 409) {
         throw new Error('USERNAME_TAKEN');
       }
+      if (res.status === 401 || res.status === 403) {
+        throw new Error('Your session needs to be refreshed. Sign in again.');
+      }
       if (!res.ok) {
-        throw new Error(
-          'Failed to complete onboarding on authoritative server'
-        );
+        let errMsg = 'Failed to complete onboarding on authoritative server';
+        try {
+          const body = await res.json();
+          if (body?.message) errMsg = body.message;
+        } catch {}
+        throw new Error(errMsg);
       }
       return (await res.json()) as UserProfile;
     }
